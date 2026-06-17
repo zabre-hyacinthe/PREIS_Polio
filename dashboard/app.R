@@ -38,9 +38,26 @@ CFG_DIR       <- file.path(ROOT_DIR, "config")
 CURATED_DIR   <- file.path(ROOT_DIR, "data", "curated")
 WWW_DIR       <- file.path(ROOT_DIR, "www")
 
-POLIO_EMAIL_FP <- file.path(DASH_DATA_DIR, "polio_africa_email_input.csv")
-POLIO_ALERT_FP <- file.path(DASH_DATA_DIR, "polio_alert_input.csv")
-POLIO_ISSUE_FP <- file.path(DASH_DATA_DIR, "polio_last_issue.csv")
+# Base GitHub raw - donnees dynamiques mises a jour par le pipeline cloud.
+# Le dashboard lit d'abord GitHub (donnees fraiches), repli local si offline.
+GH_RAW_POLIO <- Sys.getenv(
+  "PREIS_POLIO_GH_RAW",
+  "https://raw.githubusercontent.com/zabre-hyacinthe/PREIS_Polio/refs/heads/main/dashboard/data/dashboard")
+
+# Chemins locaux (repli)
+POLIO_EMAIL_LOCAL <- file.path(DASH_DATA_DIR, "polio_africa_email_input.csv")
+POLIO_ALERT_LOCAL <- file.path(DASH_DATA_DIR, "polio_alert_input.csv")
+POLIO_ISSUE_LOCAL <- file.path(DASH_DATA_DIR, "polio_last_issue.csv")
+
+# URLs GitHub (prioritaire)
+POLIO_EMAIL_URL <- paste0(GH_RAW_POLIO, "/polio_africa_email_input.csv")
+POLIO_ALERT_URL <- paste0(GH_RAW_POLIO, "/polio_alert_input.csv")
+POLIO_ISSUE_URL <- paste0(GH_RAW_POLIO, "/polio_last_issue.csv")
+
+# Noms d'origine = chemins locaux (pour les verifications d'existence ci-dessous)
+POLIO_EMAIL_FP <- POLIO_EMAIL_LOCAL
+POLIO_ALERT_FP <- POLIO_ALERT_LOCAL
+POLIO_ISSUE_FP <- POLIO_ISSUE_LOCAL
 RCC_CFG_FP     <- file.path(CFG_DIR,       "rcc_country_fv.csv")
 RCC_GEOJSON_FP <- file.path(CURATED_DIR,   "africa_countries_rcc.geojson")
 LOGO_FP        <- file.path(WWW_DIR,        "africacdc_logo.png")
@@ -102,6 +119,27 @@ clean_colnames <- function(x) {
 }
 
 safe_read_csv <- function(path) {
+  # Si c'est une URL : telecharger via download.file (robuste derriere proxy),
+  # puis lire le fichier temporaire. Sinon : lecture locale classique.
+  is_url <- grepl("^https?://", path)
+  if (is_url) {
+    tmp <- tempfile(fileext = ".csv")
+    ok <- tryCatch({
+      utils::download.file(path, destfile = tmp, mode = "wb", quiet = TRUE)
+      TRUE
+    }, error = function(e) {
+      message("[DOWNLOAD ERROR] ", path, " :: ", e$message)
+      FALSE
+    })
+    if (!ok || !file.exists(tmp) || file.size(tmp) == 0) return(tibble())
+    return(tryCatch(
+      readr::read_csv(tmp, show_col_types = FALSE, progress = FALSE),
+      error = function(e) {
+        message("[READ ERROR] ", path, " :: ", e$message)
+        tibble()
+      }
+    ))
+  }
   if (!file.exists(path)) return(tibble())
   tryCatch(
     readr::read_csv(path, show_col_types = FALSE, progress = FALSE),
@@ -110,6 +148,17 @@ safe_read_csv <- function(path) {
       tibble()
     }
   )
+}
+
+# Lecture avec priorite GitHub puis repli local (pour donnees dynamiques)
+read_dynamic <- function(url, local_fp) {
+  d <- safe_read_csv(url)
+  if (nrow(d) > 0) {
+    message("[APP] donnees lues depuis GitHub: ", basename(local_fp))
+    return(d)
+  }
+  message("[APP] repli local pour: ", basename(local_fp))
+  safe_read_csv(local_fp)
 }
 
 empty_plotly <- function(msg = "No data available.") {
@@ -411,9 +460,9 @@ centroids <- tryCatch({
 # POLIO DATA BUILDER
 # ------------------------------------------------------------
 build_polio_df <- function() {
-  polio_email <- safe_read_csv(POLIO_EMAIL_FP)
-  polio_alert <- safe_read_csv(POLIO_ALERT_FP)
-  polio_issue <- safe_read_csv(POLIO_ISSUE_FP)
+  polio_email <- read_dynamic(POLIO_EMAIL_URL, POLIO_EMAIL_LOCAL)
+  polio_alert <- read_dynamic(POLIO_ALERT_URL, POLIO_ALERT_LOCAL)
+  polio_issue <- read_dynamic(POLIO_ISSUE_URL, POLIO_ISSUE_LOCAL)
   
   names(polio_email) <- clean_colnames(names(polio_email))
   names(polio_alert) <- clean_colnames(names(polio_alert))
