@@ -1,0 +1,11 @@
+ARCHIVE_UNUSED/
+*.log
+outputs/logs/
+.Rproj.user/
+.Rhistory
+.RData
+rsconnect/
+# Secrets - NE JAMAIS commiter
+*_secret*
+.secrets/
+email_credentials*

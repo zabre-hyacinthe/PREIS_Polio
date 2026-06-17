@@ -1,0 +1,38 @@
+pattern,pathogen_norm
+mpox|monkeypox|monkey pox,Mpox
+\btb\b|tuberculosis,TB
+\bhiv\b|aids|vih,HIV
+covid\-?19|sars\-cov\-2|coronavirus disease 2019,Covid-19
+malaria|plasmodium,Malaria
+cholera|vibrio cholerae,Cholera
+ebola|ebov,Ebola
+marburg,Marburg
+lassa,Lassa fever
+dengue,Dengue
+measles|rougeole,Measles
+yellow fever|fi[eè]vre jaune,Yellow fever
+meningitis|m[eé]ningite,Meningitis
+polio|poliomyelitis|poliomy[eé]lite,Polio
+\bcholera\b|vibrio\s+cholerae,Cholera
+\bmeasles\b|rougeole,Measles
+yellow\s+fever|fi[eè]vre\s+jaune,Yellow fever
+\bebola\b|\bebov\b,Ebola
+\bmarburg\b,Marburg
+\blassa\b,Lassa fever
+\brift\s+valley\s+fever\b|\brvf\b,Rift Valley fever
+\bmeningitis\b|m[eé]ningite,Meningitis
+\bdengue\b,Dengue
+\bzika\b,Zika
+\bchikungunya\b,Chikungunya
+\bavian\s+influenza\b|\bh5n1\b|\bh7n9\b|\binfluenza\b,Influenza
+\bcchf\b|crimean\s+congo\s+haemorrhagic\s+fever,CCHF
+\banthrax\b|bacillus\s+anthracis,Anthrax
+\bplague\b|yersinia\s+pestis,Plague
+\btyphoid\b|salmonella\s+typhi,Typhoid
+\bhepatitis\s+[abcde]\b|\bhepatitis\b,Hepatitis
+\bmalaria\b|plasmodium,Malaria
+\btuberculosis\b|\btb\b,TB
+\bhiv\b|\baids\b|\bvih\b,HIV
+covid\-?19|sars\-cov\-2,Covid-19
+\bpolio\b|poliomyelitis|poliomy[eé]lite,Polio
+\brabies\b,Rabies

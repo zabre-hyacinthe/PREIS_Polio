@@ -1,0 +1,162 @@
+country,alias,alias_type
+Africa,Western Sahara,region
+Algeria,Algerian,demonym
+Algeria,Algeria,diacritic
+Algeria,Algeria,name
+Angola,Angolan,demonym
+Angola,Angola,diacritic
+Angola,Angola,name
+Benin,Beninese,demonym
+Benin,Benin,diacritic
+Benin,Benin,name
+Botswana,Motswana,demonym
+Botswana,Botswana,diacritic
+Botswana,Botswana,name
+Burkina Faso,Burkinabe,demonym
+Burkina Faso,Burkinabè,demonym
+Burkina Faso,Burkina Faso,diacritic
+Burkina Faso,Burkina Faso,name
+Burundi,Burundian,demonym
+Burundi,Burundi,diacritic
+Burundi,Burundi,name
+Cameroon,Cameroonian,demonym
+Cameroon,Cameroon,diacritic
+Cameroon,Cameroon,name
+Central African Republic,Central African,demonym
+Central African Republic,Central African Republic,diacritic
+Central African Republic,Central African Republic,name
+Chad,Chadian,demonym
+Chad,Chad,diacritic
+Chad,Chad,name
+Congo Republic,Congolese,demonym
+Congo Republic,Congo Republic,diacritic
+Congo Republic,Congo Republic,name
+Congo Republic,Congo (Republic),synonym
+Congo Republic,Congo-Brazzaville,synonym
+Congo Republic,Republic of the Congo,synonym
+Côte d'Ivoire,Ivorian,demonym
+Côte d'Ivoire,Cote d'Ivoire,diacritic
+Côte d'Ivoire,Côte d'Ivoire,name
+Côte d'Ivoire,Cote d'Ivoire,synonym
+Côte d'Ivoire,Ivory Coast,synonym
+Democratic Republic of the Congo,DRC,abbrev
+Democratic Republic of the Congo,Congolese,demonym
+Democratic Republic of the Congo,Democratic Republic of the Congo,diacritic
+Democratic Republic of the Congo,Democratic Republic of the Congo,name
+Democratic Republic of the Congo,Congo (DRC),synonym
+Democratic Republic of the Congo,Congo-Kinshasa,synonym
+Democratic Republic of the Congo,DR Congo,synonym
+Djibouti,Djiboutian,demonym
+Djibouti,Djibouti,diacritic
+Djibouti,Djibouti,name
+Egypt,Egyptian,demonym
+Egypt,Egypt,diacritic
+Egypt,Egypt,name
+Equatorial Guinea,Equatorial Guinean,demonym
+Equatorial Guinea,Equatorial Guinea,diacritic
+Equatorial Guinea,Equatorial Guinea,name
+Eritrea,Eritrean,demonym
+Eritrea,Eritrea,diacritic
+Eritrea,Eritrea,name
+Eswatini,Swazi,demonym
+Eswatini,Eswatini,diacritic
+Eswatini,Eswatini,name
+Eswatini,Swaziland,synonym
+Ethiopia,Ethiopian,demonym
+Ethiopia,Ethiopia,diacritic
+Ethiopia,Ethiopia,name
+Gabon,Gabonese,demonym
+Gabon,Gabon,diacritic
+Gabon,Gabon,name
+Gambia,Gambian,demonym
+Gambia,Gambia,diacritic
+Gambia,Gambia,name
+Gambia,The Gambia,synonym
+Ghana,Ghanaian,demonym
+Ghana,Ghana,diacritic
+Ghana,Ghana,name
+Guinea,Guinean,demonym
+Guinea,Guinea,diacritic
+Guinea,Guinea,name
+Kenya,Kenyan,demonym
+Kenya,Kenya,diacritic
+Kenya,Kenya,name
+Liberia,Liberian,demonym
+Liberia,Liberia,diacritic
+Liberia,Liberia,name
+Libya,Libyan,demonym
+Libya,Libya,diacritic
+Libya,Libya,name
+Madagascar,Malagasy,demonym
+Madagascar,Madagascar,diacritic
+Madagascar,Madagascar,name
+Malawi,Malawian,demonym
+Malawi,Malawi,diacritic
+Malawi,Malawi,name
+Mali,Malian,demonym
+Mali,Mali,diacritic
+Mali,Mali,name
+Mauritania,Mauritanian,demonym
+Mauritania,Mauritania,diacritic
+Mauritania,Mauritania,name
+Mauritius,Mauritian,demonym
+Mauritius,Mauritius,diacritic
+Mauritius,Mauritius,name
+Morocco,Moroccan,demonym
+Morocco,Morocco,diacritic
+Morocco,Morocco,name
+Mozambique,Mozambican,demonym
+Mozambique,Mozambique,diacritic
+Mozambique,Mozambique,name
+Namibia,Namibian,demonym
+Namibia,Namibia,diacritic
+Namibia,Namibia,name
+Niger,Nigerien,demonym
+Niger,Niger,diacritic
+Niger,Niger,name
+Nigeria,Nigerian,demonym
+Nigeria,Nigeria,diacritic
+Nigeria,Nigeria,name
+Rwanda,Rwandan,demonym
+Rwanda,Rwanda,diacritic
+Rwanda,Rwanda,name
+Senegal,Senegalese,demonym
+Senegal,Senegal,diacritic
+Senegal,Senegal,name
+Seychelles,Seychellois,demonym
+Seychelles,Seychelles,diacritic
+Seychelles,Seychelles,name
+Sierra Leone,Sierra Leonean,demonym
+Sierra Leone,Sierra Leone,diacritic
+Sierra Leone,Sierra Leone,name
+Somalia,Somali,demonym
+Somalia,Somalia,diacritic
+Somalia,Somalia,name
+South Africa,South African,demonym
+South Africa,South Africa,diacritic
+South Africa,South Africa,name
+South Sudan,South Sudanese,demonym
+South Sudan,South Sudan,diacritic
+South Sudan,South Sudan,name
+Sudan,Sudanese,demonym
+Sudan,Sudan,diacritic
+Sudan,Sudan,name
+Tanzania,Tanzanian,demonym
+Tanzania,Tanzania,diacritic
+Tanzania,Tanzania,name
+Tanzania,United Republic of Tanzania,synonym
+Togo,Togolese,demonym
+Togo,Togo,diacritic
+Togo,Togo,name
+Tunisia,Tunisian,demonym
+Tunisia,Tunisia,diacritic
+Tunisia,Tunisia,name
+Uganda,Ugandan,demonym
+Uganda,Uganda,diacritic
+Uganda,Uganda,name
+Zambia,Zambian,demonym
+Zambia,Zambia,diacritic
+Zambia,Zambia,name
+Zimbabwe,Zimbabwean,demonym
+Zimbabwe,Zimbabwe,diacritic
+Zimbabwe,Zimbabwe,name

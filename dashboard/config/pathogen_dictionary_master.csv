@@ -1,0 +1,114 @@
+pathogen,pathogen_group,priority,pattern
+Adenovirus,Viral,1,\b(adenovirus|adenoviral)\b
+Amoebiasis,Parasitic,1,\b(amoebiasis|amebiasis|entamoeba histolytica)\b
+Anthrax,Bacterial,1,\b(anthrax|bacillus anthracis)\b
+Aspergillosis,Fungal,1,\b(aspergillosis|aspergillus)\b
+Brucellosis,Bacterial,1,\b(brucellosis|brucella)\b
+COVID-19,Viral,1,\b(covid[ -]?19|sars[ -]?cov[ -]?2|2019[ -]?ncov|coronavirus disease 2019)\b
+Campylobacteriosis,Bacterial,1,\b(campylobacter|campylobacteriosis)\b
+Candidiasis,Fungal,1,\b(candidiasis|candida)\b
+Chikungunya,Viral,1,\b(chikungunya)\b
+Chlamydia,Bacterial,1,\b(chlamydia trachomatis|\bchlamydia\b)\b
+Cholera,Bacterial,1,\b(cholera|vibrio cholerae)\b
+Clostridioides difficile,Bacterial,1,\b(clostridioides difficile|clostridium difficile|c\. ?difficile)\b
+Coxsackievirus,Viral,1,\b(coxsackievirus|coxsackie virus|coxsackievirus a24)\b
+Crimean-Congo HF,Viral,1,\b(cchf|crimean[ -]?congo|crimean congo hemorrhagic fever)\b
+Cryptococcosis,Fungal,1,\b(cryptococcosis|cryptococcus)\b
+Cryptosporidiosis,Parasitic,1,\b(cryptosporidiosis|cryptosporidium)\b
+Cytomegalovirus,Viral,1,\b(cytomegalovirus|\bcmv\b)\b
+Dengue,Viral,1,\b(dengue)\b
+Diphtheria,Bacterial,1,\b(diphtheria|corynebacterium diphtheriae)\b
+Ebola,Viral,1,\b(ebola|ebolavirus|orthoebolavirus|sudan virus)\b
+Echinococcosis,Parasitic,1,\b(echinococcosis|hydatid disease)\b
+Enterovirus,Viral,1,\b(enterovirus)\b
+Epstein-Barr Virus,Viral,1,\b(epstein[- ]barr|\bebv\b)\b
+Escherichia coli,Bacterial,1,\b(escherichia coli|\be\. ?coli\b|stec|shiga toxin[- ]producing)\b
+Giardiasis,Parasitic,1,\b(giardiasis|giardia)\b
+Gonorrhea,Bacterial,1,\b(gonorrhea|gonorrhoea|neisseria gonorrhoeae)\b
+HIV/AIDS,Viral,1,\b(hiv|human immunodeficiency virus|aids\b|acquired immune deficiency syndrome)\b
+HPV,Viral,1,\b(hpv|human papillomavirus|papillomavirus)\b
+HSV,Viral,1,\b(hsv|herpes simplex|genital herpes|herpesvirus)\b
+HTLV,Viral,1,\b(htlv[- ]?1|htlv[- ]?2|human t[- ]?lymphotropic virus)\b
+Hantavirus,Viral,1,\b(hantavirus|orthohantavirus)\b
+Helicobacter pylori,Bacterial,1,\b(helicobacter pylori|h\. ?pylori)\b
+Hepatitis A,Viral,1,\b(hepatitis a|\bhav\b)\b
+Hepatitis B,Viral,1,\b(hepatitis b|\bhbv\b)\b
+Hepatitis C,Viral,1,\b(hepatitis c|\bhcv\b)\b
+Hepatitis D,Viral,1,\b(hepatitis d|\bhdv\b)\b
+Hepatitis E,Viral,1,\b(hepatitis e|\bhev\b)\b
+Human African Trypanosomiasis,Parasitic,1,\b(human african trypanosomiasis)\b
+Human Metapneumovirus,Viral,1,\b(hmpv|human metapneumovirus)\b
+Influenza,Viral,1,\b(influenza|avian influenza|bird flu|swine flu|h1n1|h3n2|h5n1|h5n6|h7n9|\bflu\b)\b
+Klebsiella pneumoniae,Bacterial,1,\b(klebsiella pneumoniae)\b
+Lassa Fever,Viral,1,\b(lassa|lassa fever)\b
+Leishmaniasis,Parasitic,1,\b(leishmania|leishmaniasis|cutaneous leishmaniasis)\b
+Leprosy,Bacterial,1,\b(leprosy|hansen disease|mycobacterium leprae)\b
+Leptospirosis,Bacterial,1,\b(leptospirosis|leptospira)\b
+Loiasis,Parasitic,1,\b(loiasis|loa loa)\b
+Lymphatic Filariasis,Parasitic,1,\b(lymphatic filariasis|filariasis|elephantiasis|wuchereria bancrofti)\b
+MERS,Viral,1,\b(mers|mers[ -]?cov|middle east respiratory syndrome)\b
+MRSA,Bacterial,1,\b(mrsa|methicillin[- ]resistant staphylococcus aureus|staphylococcus aureus)\b
+Malaria,Parasitic,1,\b(malaria|plasmodium|falciparum|vivax)\b
+Marburg,Viral,1,\b(marburg|marburgvirus)\b
+Measles,Viral,1,\b(measles|rubeola)\b
+Meningitis,Bacterial,1,\b(meningitis|meningococcal|neisseria meningitidis|pneumococcal meningitis)\b
+Mpox,Viral,1,\b(mpox|monkeypox|monkey pox|orthopoxvirus)\b
+Mumps,Viral,1,\b(mumps)\b
+Myiasis,Parasitic,1,\b(myiasis)\b
+Nipah,Viral,1,\b(nipah)\b
+Norovirus,Viral,1,\b(norovirus|norwalk virus)\b
+O'nyong-nyong,Viral,1,\b(o['’ -]?nyong['’ -]?nyong)\b
+OFFTARGET_ANIMAL_DISEASE,OffTarget,1,\b(peste des petits ruminants|\bppr\b|foot[- ]and[- ]mouth disease|foot and mouth disease|\bfmdv\b|african swine fever|\basfv\b|newcastle disease virus|lumpy skin disease|african horse sickness|sheep pox|goat pox|contagious caprine pleuropneumonia|epizootic hemorrhagic disease|bluetongue|theileria|theileriosis|mycoplasma mycoides|porcine circovirus|swine fever|cattle disease|livestock disease|ruminant disease|bovine|ovine|caprine|swine|pig farms|wild boar)\b
+OFFTARGET_PLANT_DISEASE,OffTarget,1,\b(cassava mosaic disease|cassava brown streak disease|rice yellow mottle virus|begomovirus|fruit flies|armyworm|wheat stem rust|plant viral disease|forest trees|maize lethal necrosis)\b
+Onchocerciasis,Parasitic,1,\b(onchocerciasis|river blindness)\b
+Orf Virus,Viral,1,\b(orf virus|contagious ecthyma)\b
+Paragonimiasis,Parasitic,1,\b(paragonimus|paragonimiasis)\b
+Parainfluenza,Viral,1,\b(parainfluenza)\b
+Pertussis,Bacterial,1,\b(pertussis|whooping cough)\b
+Plague,Bacterial,1,\b(plague|yersinia pestis)\b
+Pneumococcal Disease,Bacterial,1,\b(streptococcus pneumoniae|pneumococcal disease|pneumococcal)\b
+Polio,Viral,1,\b(polio|poliovirus|poliomyelitis|vdpv|cvdpv|wpv)\b
+Q Fever,Bacterial,1,\b(q fever|coxiella burnetii)\b
+RSV,Viral,1,\b(rsv|respiratory syncytial virus)\b
+Rabies,Viral,1,\b(rabies)\b
+Rickettsiosis,Bacterial,1,\b(rickettsia|rickettsiosis|typhus)\b
+Rift Valley Fever,Viral,1,\b(rift valley fever|\brvf\b)\b
+Rotavirus,Viral,1,\b(rotavirus)\b
+Rubella,Viral,1,\b(rubella)\b
+SARS,Viral,1,\b(sars\b|severe acute respiratory syndrome)\b
+Salmonellosis,Bacterial,1,\b(non[- ]?typhoidal salmonella|nontyphoidal salmonella|salmonellosis|salmonella)\b
+Scabies,Parasitic,1,\b(scabies)\b
+Schistosomiasis,Parasitic,1,\b(schistosomiasis|schistosoma|bilharzia)\b
+Shigellosis,Bacterial,1,\b(shigella|shigellosis)\b
+Sindbis,Viral,1,\b(sindbis)\b
+Smallpox,Viral,1,\b(smallpox)\b
+Strongyloidiasis,Parasitic,1,\b(strongyloidiasis|strongyloides)\b
+Syphilis,Bacterial,1,\b(syphilis|treponema pallidum)\b
+Taeniasis/Cysticercosis,Parasitic,1,\b(cysticercosis|taeniasis|taenia solium)\b
+Tetanus,Bacterial,1,\b(tetanus)\b
+Toxoplasmosis,Parasitic,1,\b(toxoplasmosis|toxoplasma gondii)\b
+Trichinellosis,Parasitic,1,\b(trichinellosis|trichinella)\b
+Trypanosomiasis,Parasitic,1,\b(trypanosomiasis|sleeping sickness|trypanosoma)\b
+Tuberculosis,Bacterial,1,\b(tuberculosis|\btb\b|mycobacterium tuberculosis)\b
+Tungiasis,Parasitic,1,\b(tungiasis)\b
+Typhoid,Bacterial,1,\b(typhoid|salmonella typhi|enteric fever)\b
+Usutu,Viral,1,\b(usutu)\b
+Varicella,Viral,1,\b(varicella|chickenpox|varicella zoster|\bvzv\b)\b
+West Nile Fever,Viral,1,\b(west nile|west nile virus)\b
+Yellow Fever,Viral,1,\b(yellow fever)\b
+Zika,Viral,1,\b(zika)\b
+Arboviral Disease,Viral,3,\b(arbovirus|arboviral|mosquito[- ]borne vir(?:us|uses)|vector[- ]borne vir(?:us|uses)|arboviral diseases?)\b
+Bloodstream Infection,Bacterial,3,\b(bloodstream infection|bsi\b|sepsis|septicaemia|septicemia)\b
+Infective Endocarditis,Bacterial,3,\b(infective endocarditis|endocarditis)\b
+Urinary Tract Infection,Bacterial,3,\b(urinary tract infection|urinary tract infections|\buti\b|\butis\b)\b
+Diarrhoeal Disease,Syndromic,4,\b(diarrh(o|oe)ea|diarrheal disease|diarrhoeal disease|gastroenteritis|enteric disease)\b
+Fungal Infection,Fungal,4,\b(fungal infection|pulmonary fungal infection|fungal skin disease|mycosis|mycoses)\b
+Lower Respiratory Infection,Syndromic,4,\b(lower respiratory infection|lower respiratory infections|acute respiratory infection|ari\b|sari\b|influenza like illness|ili\b|pneumonia)\b
+Neglected Tropical Diseases (Generic),Syndromic,4,\b(neglected tropical diseases|\bntd\b|\bntds\b)\b
+Sexually Transmitted Infection,Syndromic,4,\b(sexually transmitted infection|sexually transmitted infections|\bsti\b|\bstd\b)\b
+Viral Hemorrhagic Fever,Syndromic,4,\b(viral haemorrhagic fever|viral hemorrhagic fever|haemorrhagic fever syndrome|hemorrhagic fever syndrome)\b
+Viral Hepatitis,Viral,4,\b(viral hepatitis|hepatitis elimination)\b
+Communicable Disease,Syndromic,8,\b(communicable disease|infectious disease|infectious diseases|pathogen surveillance|outbreak(s)?|epidemic(s)?)\b
+OFFTARGET_NONCOMMUNICABLE,OffTarget,9,\b(diabetes|diabetic|hypertension|cardiovascular|cancer|tumou?r|oncology|stroke|heart failure|renal disease|kidney disease|obesity|overweight|asthma|copd|parkinson|dementia|alzheimer|depression|anxiety|mental disorder|schizophrenia|epilepsy|fracture|osteoporosis|osteoarthritis|glaucoma|retinopathy|prostate cancer|breast cancer|cervical cancer|colorectal cancer|liver cancer|thyroid cancer|pancreatic cancer|ovarian cancer|bladder cancer|esophageal cancer|lung cancer|periodontal disease|burn injury|trauma|maternal mortality|stillbirth|perinatal mortality|obstetric fistula|malnutrition|stunting|wasting|anemia|anaemia|iodine deficiency|vitamin a deficiency)\b
+OFFTARGET_GENERAL_HEALTH,OffTarget,10,\b(health system|health systems|health financing|health expenditure|quality of life|midwives|antenatal care|postnatal care|vaccination coverage|zero[- ]dose|immunization coverage|digital health|public health policy|healthcare access|health care access|surgical practice|workforce|capacity building|education|training|migration|refugee health|global health|one health governance)\b
+Unknown Agent,Unknown,50,\b(unknown agent|unknown pathogen|unknown etiology|unknown aetiology|undiagnosed)\b

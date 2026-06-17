@@ -1,0 +1,2 @@
+fetch_date,issue_id,issue_date,report_date,n_summary_rows,n_detail_rows,raw_file,archive_file,source_url
+2026-03-23,20260318,2026-03-18,18 March 2026,8,0,data/raw/polio_this_week_latest.html,data/archive/polio_this_week_issue_20260318.html,https://polioeradication.org/about-polio/polio-this-week/
