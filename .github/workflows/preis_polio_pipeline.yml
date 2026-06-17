@@ -5,6 +5,15 @@ on:
     # 8h00 Afrique de l'Est (EAT = UTC+3)  ->  5h00 UTC
     - cron: "0 5 * * *"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Mode test (true = aucun email envoye)"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 permissions:
   contents: write
@@ -24,7 +33,8 @@ jobs:
       ALERT_FROM: ${{ secrets.ALERT_FROM }}
       SMTP_HOST: smtp.gmail.com
       SMTP_PORT: "465"
-      PREIS_DRY_RUN: "false"
+      # Cron (schedule) -> false (vrais envois). Lancement manuel -> choix utilisateur.
+      PREIS_DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || github.event.inputs.dry_run }}
 
     steps:
       - name: Checkout repository
