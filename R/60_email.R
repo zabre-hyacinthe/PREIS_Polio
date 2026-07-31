@@ -7,11 +7,22 @@
 # R/60_email.R
 # =========================================================
 
-suppressPackageStartupMessages({
+# Ne pas exiger blastula au chargement du pipeline. En mode dry-run, aucun
+# moteur SMTP n'est nécessaire. Pour un envoi réel, la dépendance est contrôlée
+# juste avant son utilisation avec un message d'erreur exploitable.
+require_blastula_for_send <- function() {
   if (!requireNamespace("blastula", quietly = TRUE)) {
-    stop("Package 'blastula' is required in R/60_email.R")
+    stop(
+      paste0(
+        "Package R 'blastula' absent: envoi email impossible. ",
+        "Le workflow GitHub doit executer setup-r-dependencies avant ",
+        "R/120_run_polio_cloud.R."
+      ),
+      call. = FALSE
+    )
   }
-})
+  invisible(TRUE)
+}
 
 get_email_env <- function() {
   list(
@@ -68,6 +79,8 @@ send_email_safely <- function(
   if (!nzchar(env$smtp_user)) stop("SMTP_USER is missing.")
   if (!nzchar(env$smtp_pass)) stop("SMTP_PASS is missing.")
   if (!nzchar(env$alert_from)) stop("ALERT_FROM is missing.")
+
+  require_blastula_for_send()
   
   # Make sure the password is visible to blastula through an env var
   Sys.setenv(SMTP_PASS = env$smtp_pass)
