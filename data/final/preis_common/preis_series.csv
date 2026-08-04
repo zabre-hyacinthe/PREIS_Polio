@@ -1,3 +1,3 @@
 module,source,report_id,report_date,geo_level,geo_name,geo_code,indicator,value,value_type,signal_level,provisional,source_url,extracted_at
-polio,GPEI / Polio This Week,issue_20260729,2026-07-29,country,Democratic Republic of the Congo,COD,cvdpv2_cases,4,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-03T08:23:51Z
-polio,GPEI / Polio This Week,issue_20260729,2026-07-29,country,South Sudan,SSD,cvdpv1_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-03T08:23:51Z
+polio,GPEI / Polio This Week,issue_20260729,2026-07-29,country,Democratic Republic of the Congo,COD,cvdpv2_cases,4,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-04T07:33:07Z
+polio,GPEI / Polio This Week,issue_20260729,2026-07-29,country,South Sudan,SSD,cvdpv1_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-04T07:33:07Z
