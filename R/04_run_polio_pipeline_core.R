@@ -219,6 +219,32 @@ run_polio_pipeline_core <- function(
   })
   
   result$sent <- TRUE
+
+  # ------------------------------------------------------------
+  # 7. Marquer cette edition comme traitee (CORRECTIF 08/08/2026)
+  #    BUG TROUVE EN PRODUCTION : write_last_issue() n'etait appele nulle
+  #    part dans tout le pipeline. data/last_issue.txt restait donc fige
+  #    (bloque au 22 avril 2026) alors que le workflow tourne chaque jour
+  #    (cron 0 5 * * *) et que GPEI ne publie qu'une fois par semaine.
+  #    Consequence reelle : check_polio_update() comparait TOUJOURS au
+  #    22 avril, detectait "une nouvelle edition" a CHAQUE run quotidien,
+  #    et renvoyait les emails RCC chaque jour meme quand rien n'avait
+  #    change depuis la veille.
+  #    Ecrit seulement ICI, apres succes complet (reconstruction ET
+  #    envoi des emails) : une edition n'est marquee traitee que si tout
+  #    le pipeline a reellement reussi, jamais avant.
+  # ------------------------------------------------------------
+  tryCatch({
+    write_last_issue(latest_issue$issue_id, root = ROOT)
+    message("[POLIO CORE] Registre last_issue.txt mis a jour -> ", latest_issue$issue_id)
+  }, error = function(e) {
+    warning(
+      "[POLIO CORE] Echec de la mise a jour de last_issue.txt (le pipeline ",
+      "a neanmoins reussi et les emails ont ete envoyes) : ", e$message,
+      call. = FALSE
+    )
+  })
+
   result$status <- "SUCCESS"
   
   message("[POLIO CORE] PIPELINE COMPLETE — SUCCESS")
