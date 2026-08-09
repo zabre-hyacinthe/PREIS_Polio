@@ -266,12 +266,49 @@ prepare_polio_alert_input <- function(
   extraction_date <- as.Date(extraction_datetime)
   
   gpei <- extract_gpei_page(url)
-  
-  reporting_date <- parse_all_dates_non_future(
-    x = gpei$text,
-    extraction_date = extraction_date
-  )
-  
+
+  # CORRECTIF 09/08/2026 -- BUG RACINE TROUVE EN PRODUCTION (recurrent,
+  # deja rencontre au moins une fois avant avec une autre date fausse :
+  # voir le garde-fou "20 June 2026" plus bas dans ce fichier, ajoute a
+  # l'epoque comme rustine sans jamais corriger la cause).
+  #
+  # parse_all_dates_non_future() scanne TOUT le texte de la page (y
+  # compris chaque date d'apparition de paralysie / d'echantillon le
+  # plus recent mentionnee pour chaque pays dans les sections
+  # detaillees), retient toutes les dates non-futures, et prend la PLUS
+  # RECENTE. Si aucune de ces dates de cas individuelles n'est aussi
+  # recente que la vraie date "as of" du bulletin (frequent : un pays
+  # peut ne pas avoir eu de nouveau cas depuis des mois), cette date de
+  # cas ancienne gagne a tort -- exactement ce qui produisait "20 May
+  # 2026" alors que le bulletin etait celui du 05 August 2026.
+  #
+  # 04_run_polio_pipeline_core.R determine DEJA la vraie date via
+  # check_polio_update() (qui lit directement l'entete "as of DATE" de
+  # la page, fiable) et la transmet ici via le parametre latest_issue --
+  # mais ce parametre etait declare et jamais utilise. On lui donne
+  # maintenant la priorite ; l'ancienne heuristique ne sert plus que de
+  # filet de secours si la fonction est appelee seule, sans latest_issue
+  # (usage direct/manuel, hors du pipeline normal).
+  reporting_date <- NA
+  if (!is.null(latest_issue) && !is.null(latest_issue$issue_date) &&
+      nzchar(as.character(latest_issue$issue_date))) {
+    reporting_date <- as.Date(as.character(latest_issue$issue_date), format = "%d %B %Y")
+    if (is.na(reporting_date)) {
+      reporting_date <- suppressWarnings(as.Date(as.character(latest_issue$issue_date)))
+    }
+    if (!is.na(reporting_date)) {
+      message("[POLIO PREP] Reporting date pris depuis latest_issue (fiable) : ", latest_issue$issue_date)
+    }
+  }
+
+  if (is.na(reporting_date)) {
+    message("[POLIO PREP] latest_issue absent/invalide -> repli sur l'heuristique de scan de texte.")
+    reporting_date <- parse_all_dates_non_future(
+      x = gpei$text,
+      extraction_date = extraction_date
+    )
+  }
+
   # If the website date extraction fails, use extraction date.
   # Never use latest_issue if it contains a future/wrong date.
   if (is.na(reporting_date)) {
@@ -280,6 +317,20 @@ prepare_polio_alert_input <- function(
       "[POLIO PREP] No valid non-future GPEI date found. ",
       "Using extraction date: ",
       reporting_date,
+      call. = FALSE
+    )
+  }
+
+  # Garde-fou general (en plus du cas specifique deja code plus bas) :
+  # si la date retenue accuse plus de 21 jours de retard sur la date
+  # d'extraction, c'est le signe probable du meme bug sous une autre
+  # forme -- on ne bloque pas le pipeline pour autant, mais on le
+  # signale bien fort dans les logs.
+  if (!is.na(reporting_date) && as.numeric(extraction_date - reporting_date) > 21) {
+    warning(
+      "[POLIO PREP] ATTENTION : reporting_date (", reporting_date, ") a plus de 21 jours ",
+      "de retard sur l'extraction (", extraction_date, "). Verifier qu'il ne s'agit pas ",
+      "a nouveau du bug de date extraite depuis le texte des cas individuels.",
       call. = FALSE
     )
   }
