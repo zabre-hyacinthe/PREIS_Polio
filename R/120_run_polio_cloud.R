@@ -43,11 +43,16 @@ tryCatch({
     dashboard_url = DASHBOARD_URL
   )
   
-  if (!identical(res$status, "SUCCESS")) {
-    stop("Core pipeline did not return SUCCESS.")
+  # CORRECTIF 09/08/2026 : run_polio_pipeline_core() peut desormais
+  # renvoyer "SUCCESS_NO_UPDATE" (edition inchangee, email volontairement
+  # saute -- voir le correctif du meme jour dans 04_run_polio_pipeline_
+  # core.R). C'est une reussite, pas un echec : seul un statut hors de
+  # cette liste connue doit faire echouer le job.
+  if (!res$status %in% c("SUCCESS", "SUCCESS_NO_UPDATE")) {
+    stop("Core pipeline did not return a known success status (got: ", res$status, ").")
   }
-  
-  log_msg("CORE PIPELINE SUCCESS")
+
+  log_msg("CORE PIPELINE", res$status)
   if (!is.null(res$latest_issue)) {
     log_msg("Latest issue:", res$latest_issue$issue_id)
     log_msg("Issue date:", res$latest_issue$issue_date)
@@ -65,8 +70,8 @@ tryCatch({
     log_msg("WARNING: adapter introuvable, socle commun non mis a jour")
   }
   
-  status <- "SUCCESS"
-  
+  status <- res$status
+
 }, error = function(e) {
   status <<- "FAILED"
   log_msg("PIPELINE FAILED:", conditionMessage(e))
@@ -74,7 +79,7 @@ tryCatch({
 
 log_msg("FINAL STATUS:", status)
 
-if (status != "SUCCESS") {
+if (!status %in% c("SUCCESS", "SUCCESS_NO_UPDATE")) {
   quit(status = 1)   # fait echouer le job GitHub Actions si erreur
 }
 
