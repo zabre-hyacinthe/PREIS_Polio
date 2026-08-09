@@ -199,26 +199,55 @@ run_polio_pipeline_core <- function(
   )
   
   message("[POLIO CORE] Current issue confirmed after rebuild: ", last_issue_file)
-  
+
   # ------------------------------------------------------------
   # 6. Envoyer emails conditionnels RCC/HQ
+  #
+  # CORRECTIF 09/08/2026 -- 3e bug trouve dans la meme investigation que
+  # les deux precedents (date fausse + registre fige). Meme une fois ces
+  # deux-la corriges, RIEN dans ce script n'empechait l'envoi d'emails
+  # quand check_polio_update() rapportait "NO NEW POLIO UPDATE" -- le
+  # pipeline continuait quand meme jusqu'a l'envoi, chaque jour, tant que
+  # GPEI ne publie pas une nouvelle edition. "conditional" dans le nom du
+  # script ne voulait dire que "si cette RCC a des alertes cette
+  # edition", jamais "si cette edition est nouvelle depuis le dernier
+  # envoi reussi".
+  #
+  # force_send existait deja comme parametre mais n'etait jamais utilise
+  # pour ce role : on l'utilise maintenant comme prevu, pour permettre un
+  # renvoi manuel volontaire (tests, ou renvoi apres un incident) sans
+  # toucher au comportement automatique quotidien.
   # ------------------------------------------------------------
-  message("[POLIO CORE] STEP 3 — Conditional RCC/HQ emails")
-  
-  result$send_output <- tryCatch({
-    
-    send_polio_rcc_emails_conditional(
-      send_now = send_now,
-      force_send = force_send,
-      project_dir = ROOT,
-      dashboard_url = dashboard_url
+  if (isTRUE(check_result$is_new) || isTRUE(force_send)) {
+
+    message("[POLIO CORE] STEP 3 — Conditional RCC/HQ emails")
+
+    result$send_output <- tryCatch({
+
+      send_polio_rcc_emails_conditional(
+        send_now = send_now,
+        force_send = force_send,
+        project_dir = ROOT,
+        dashboard_url = dashboard_url
+      )
+
+    }, error = function(e) {
+      stop("[POLIO CORE] send_polio_rcc_emails_conditional() failed: ", e$message)
+    })
+
+    result$sent <- TRUE
+
+  } else {
+
+    message(
+      "[POLIO CORE] STEP 3 SKIPPED -- edition inchangee depuis le dernier ",
+      "envoi reussi (is_new=FALSE) et force_send=FALSE. Aucun email envoye ",
+      "aujourd'hui. Utiliser force_send=TRUE (workflow_dispatch) pour forcer ",
+      "un renvoi manuel si necessaire."
     )
-    
-  }, error = function(e) {
-    stop("[POLIO CORE] send_polio_rcc_emails_conditional() failed: ", e$message)
-  })
-  
-  result$sent <- TRUE
+    result$send_output <- NULL
+    result$sent <- FALSE
+  }
 
   # ------------------------------------------------------------
   # 7. Marquer cette edition comme traitee (CORRECTIF 08/08/2026)
@@ -245,9 +274,9 @@ run_polio_pipeline_core <- function(
     )
   })
 
-  result$status <- "SUCCESS"
-  
-  message("[POLIO CORE] PIPELINE COMPLETE — SUCCESS")
+  result$status <- if (isTRUE(result$sent)) "SUCCESS" else "SUCCESS_NO_UPDATE"
+
+  message("[POLIO CORE] PIPELINE COMPLETE — ", result$status)
   
   return(result)
 }
