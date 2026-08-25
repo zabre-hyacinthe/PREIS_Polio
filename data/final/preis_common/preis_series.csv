@@ -1,6 +1,6 @@
 module,source,report_id,report_date,geo_level,geo_name,geo_code,indicator,value,value_type,signal_level,provisional,source_url,extracted_at
-polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Central African Republic,CAF,cvdpv2_env_samples,1,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-24T05:32:31Z
-polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Democratic Republic of the Congo,COD,cvdpv2_cases,5,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-24T05:32:31Z
-polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Niger,NER,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-24T05:32:31Z
-polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Nigeria,NGA,cvdpv2_cases_and_env,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-24T05:32:31Z
-polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Sudan,SDN,cvdpv2_cases,3,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-24T05:32:31Z
+polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Central African Republic,CAF,cvdpv2_env_samples,1,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-25T05:26:17Z
+polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Democratic Republic of the Congo,COD,cvdpv2_cases,5,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-25T05:26:17Z
+polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Niger,NER,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-25T05:26:17Z
+polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Nigeria,NGA,cvdpv2_cases_and_env,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-25T05:26:17Z
+polio,GPEI / Polio This Week,issue_20260819,2026-08-19,country,Sudan,SDN,cvdpv2_cases,3,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-08-25T05:26:17Z
