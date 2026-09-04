@@ -2,34 +2,40 @@
   "module": "polio",
   "module_label": "Polio — Afrique (cVDPV & WPV)",
   "source": "GPEI / Polio This Week",
-  "last_report_id": "issue_20260826",
-  "last_report_date": "2026-08-26",
-  "last_extracted_at": "2026-09-03T09:22:01Z",
+  "last_report_id": "issue_20260902",
+  "last_report_date": "2026-09-02",
+  "last_extracted_at": "2026-09-04T09:15:38Z",
   "system_status": "alert",
-  "n_series_rows": 2,
-  "n_countries": 2,
-  "n_signals": 2,
+  "n_series_rows": 4,
+  "n_countries": 4,
+  "n_signals": 4,
   "signals_by_level": {
     "critical": 0,
-    "high": 2,
+    "high": 4,
     "moderate": 0,
     "info": 0
   },
   "virus_summary": {
     "cVDPV2": {
-      "n_events": 7,
-      "n_countries": 2
+      "n_events": 10,
+      "n_countries": 3
+    },
+    "cVDPV3": {
+      "n_events": 2,
+      "n_countries": 1
     }
   },
   "countries_alert": [
     "Democratic Republic of the Congo",
-    "Nigeria"
+    "Mali",
+    "Nigeria",
+    "South Sudan"
   ],
   "source_url": "https://polioeradication.org/about-polio/polio-this-week/",
   "geographic_scope": {
     "region": "Africa",
     "geo_level": "country",
-    "n_countries": 2,
+    "n_countries": 4,
     "rcc_covered": ["Northern", "Southern", "Eastern", "Western", "Central"]
   },
   "methodology_notes": {
