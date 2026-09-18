@@ -48,11 +48,13 @@ GH_RAW_POLIO <- Sys.getenv(
 POLIO_EMAIL_LOCAL <- file.path(DASH_DATA_DIR, "polio_africa_email_input.csv")
 POLIO_ALERT_LOCAL <- file.path(DASH_DATA_DIR, "polio_alert_input.csv")
 POLIO_ISSUE_LOCAL <- file.path(DASH_DATA_DIR, "polio_last_issue.csv")
+POLIO_HISTORY_LOCAL <- file.path(DASH_DATA_DIR, "polio_history_dashboard.csv")
 
 # URLs GitHub (prioritaire)
 POLIO_EMAIL_URL <- paste0(GH_RAW_POLIO, "/polio_africa_email_input.csv")
 POLIO_ALERT_URL <- paste0(GH_RAW_POLIO, "/polio_alert_input.csv")
 POLIO_ISSUE_URL <- paste0(GH_RAW_POLIO, "/polio_last_issue.csv")
+POLIO_HISTORY_URL <- paste0(GH_RAW_POLIO, "/polio_history_dashboard.csv")
 
 # Noms d'origine = chemins locaux (pour les verifications d'existence ci-dessous)
 POLIO_EMAIL_FP <- POLIO_EMAIL_LOCAL
@@ -213,7 +215,10 @@ clean_rcc <- function(x) {
 clean_virus_type <- function(x) {
   z <- str_to_upper(norm_txt(x))
   dplyr::case_when(
-    str_detect(z, "CVDPV") ~ "cVDPV",
+    str_detect(z, "CVDPV1") ~ "cVDPV1",
+    str_detect(z, "CVDPV2") ~ "cVDPV2",
+    str_detect(z, "CVDPV3") ~ "cVDPV3",
+    str_detect(z, "CVDPV") ~ "cVDPV (unspecified type)",
     str_detect(z, "WPV1") ~ "WPV1",
     str_detect(z, "WPV") ~ "WPV",
     z == "" ~ "Unspecified",
@@ -330,6 +335,19 @@ detect_palette <- c(
   "Both" = "#6A3D9A",
   "Unspecified" = "#9AA0A6"
 )
+
+virus_palette <- c(
+  "WPV1" = "#D7191C", "WPV" = "#B2182B",
+  "cVDPV1" = "#F28E2B", "cVDPV2" = "#0072BC",
+  "cVDPV3" = "#7B2CBF", "cVDPV (unspecified type)" = "#6C757D",
+  "Unspecified" = "#BDBDBD"
+)
+
+virus_colour <- function(x) {
+  out <- unname(virus_palette[as.character(x)])
+  out[is.na(out)] <- virus_palette[["Unspecified"]]
+  out
+}
 
 # ------------------------------------------------------------
 # RCC REFERENCE
@@ -460,20 +478,22 @@ centroids <- tryCatch({
 # POLIO DATA BUILDER
 # ------------------------------------------------------------
 build_polio_df <- function() {
+  polio_history <- read_dynamic(POLIO_HISTORY_URL, POLIO_HISTORY_LOCAL)
   polio_email <- read_dynamic(POLIO_EMAIL_URL, POLIO_EMAIL_LOCAL)
   polio_alert <- read_dynamic(POLIO_ALERT_URL, POLIO_ALERT_LOCAL)
   polio_issue <- read_dynamic(POLIO_ISSUE_URL, POLIO_ISSUE_LOCAL)
   
+  names(polio_history) <- clean_colnames(names(polio_history))
   names(polio_email) <- clean_colnames(names(polio_email))
   names(polio_alert) <- clean_colnames(names(polio_alert))
   names(polio_issue) <- clean_colnames(names(polio_issue))
   
-  if (nrow(polio_email) > 0) {
-    polio_raw <- polio_email
-  } else {
-    polio_raw <- polio_alert
-  }
-  
+  # PREIS_PATCH_WPV1_RCC_TYPES_V1   
+  polio_history <- polio_history %>% mutate(rcc = as.character(rcc))   
+  polio_email   <- polio_email   %>% mutate(rcc = as.character(rcc))   
+  polio_alert   <- polio_alert   %>% mutate(rcc = as.character(rcc))   
+  polio_raw <- bind_rows(polio_history, polio_email, polio_alert) %>%
+    distinct()
   if (nrow(polio_raw) == 0) {
     polio_raw <- tibble(
       issue_id = character(),
@@ -503,7 +523,7 @@ build_polio_df <- function() {
   
   needed_cols <- c(
     "issue_id", "issue_date", "report_date", "country", "iso3", "rcc",
-    "virus_type", "signal_type", "count", "summary_text", "source_url",
+    "virus_type", "signal_type", "detection_source", "count", "summary_text", "source_url",
     "fetched_date", "location_text", "onset_date", "pathogen", "geo_level", "raw_bullet"
   )
   
@@ -521,7 +541,10 @@ build_polio_df <- function() {
       rcc = clean_rcc(rcc),
       virus_type = clean_virus_type(virus_type),
       signal_type = norm_txt(signal_type),
-      detection_source = clean_detection_source(signal_type),
+      detection_source = coalesce_nonempty(
+        clean_detection_source(detection_source),
+        clean_detection_source(signal_type)
+      ),
       cases = safe_num(count),
       summary_text = norm_txt(summary_text),
       source_url = norm_txt(source_url),
@@ -583,7 +606,11 @@ build_polio_df <- function() {
     mutate(
       detection_source = ifelse(is.na(detection_source) | detection_source == "", "Unspecified", detection_source),
       icon = mapply(polio_detection_icon, virus_type, detection_source, USE.NAMES = FALSE)
-    )
+    ) %>%
+    arrange(desc(issue_date)) %>%
+    distinct(issue_date, country, iso3, virus_type, detection_source, cases,
+             summary_text, .keep_all = TRUE) %>%
+    arrange(issue_date, country, virus_type, detection_source)
   
   polio_df
 }
@@ -644,10 +671,15 @@ virus_levels <- virus_levels[virus_levels != "" & !is.na(virus_levels)]
 detect_levels <- c("Human", "Environmental", "Both", "Unspecified")
 detect_levels <- detect_levels[detect_levels %in% unique(polio_df_init$detection_source)]
 
+year_levels <- sort(unique(as.integer(format(polio_df_init$issue_date, "%Y"))))
+year_levels <- year_levels[!is.na(year_levels)]
+if (!length(year_levels)) year_levels <- as.integer(format(Sys.Date(), "%Y"))
+latest_year <- max(year_levels)
+
 if (file.exists(LOGO_FP)) {
   header_title <- tags$span(
-    tags$img(src = "africacdc_logo.png", height = "30px", style = "margin-right:10px; vertical-align:middle;"),
-    tags$span("PREIS-POLIO", style = "vertical-align:middle;")
+    tags$img(src = "africacdc_logo.png", class = "africacdc-header-logo", alt = "Africa CDC"),
+    tags$span("PREIS-POLIO", class = "preis-header-title")
   )
 } else {
   header_title <- "PREIS-POLIO"
@@ -658,13 +690,31 @@ if (file.exists(LOGO_FP)) {
 # ------------------------------------------------------------
 ui <- dashboardPage(
   skin = "blue",
-  dashboardHeader(title = header_title),
+  dashboardHeader(
+    title = header_title,
+    titleWidth = 300,
+    tags$li(
+      class = "dropdown preis-permanent-title",
+      div(
+        class = "preis-permanent-title-content",
+        tags$div(
+          "African Poliovirus Epidemic Intelligence Dashboard",
+          class = "preis-permanent-main-title"
+        ),
+        tags$div(
+          "Automated monitoring of publicly reported poliovirus signals in Africa",
+          class = "preis-permanent-subtitle"
+        )
+      )
+    )
+  ),
   dashboardSidebar(
     width = 300,
     sidebarMenu(
       id = "tabs",
       selected = "overview",
       menuItem("Overview", tabName = "overview", icon = icon("dashboard")),
+      menuItem("Trends & quality", tabName = "trends", icon = icon("chart-line")),
       menuItem("Map", tabName = "map", icon = icon("globe-africa")),
       menuItem("Records", tabName = "records", icon = icon("table")),
       menuItem("Downloads", tabName = "downloads", icon = icon("download"))
@@ -674,44 +724,486 @@ ui <- dashboardPage(
     selectInput("country", "Member State", choices = c("All", country_levels), selected = "All"),
     selectInput("virus_type", "Virus type", choices = c("All", virus_levels), selected = "All"),
     selectInput("detection_source", "Detection source", choices = c("All", detect_levels), selected = "All"),
-    dateRangeInput("date_range", "Issue date", start = date_min, end = date_max),
+    sliderInput(
+      "year_range", "Publication year",
+      min = min(year_levels), max = max(year_levels),
+      value = c(latest_year, latest_year),
+      step = 1, sep = ""
+    ),
+    dateRangeInput("date_range", "GPEI publication date", start = date_max, end = date_max),
+    fluidRow(
+      column(6, actionButton("reset_filters", "Latest", icon = icon("clock"), width = "100%")),
+      column(6, actionButton("show_history", "Full history", icon = icon("history"), width = "100%"))
+    ),
     checkboxInput("show_rcc_layer", "Show RCC layer", value = TRUE),
     checkboxInput("show_case_markers", "Show polio markers", value = TRUE)
   ),
   dashboardBody(
     tags$head(
+      tags$title("PREIS Polio | Africa CDC"),
+
+      tags$style(HTML("
+        /* PREIS_KPI_CARDS_AESTHETIC_FINAL */
+
+        /* Cartes KPI uniformes et compactes */
+        body .content-wrapper .small-box {
+          height: 190px !important;
+          min-height: 190px !important;
+          margin-bottom: 20px !important;
+          overflow: hidden !important;
+          border-radius: 14px !important;
+          box-shadow: 0 5px 14px rgba(31, 45, 61, 0.12) !important;
+        }
+
+        body .content-wrapper .small-box > .inner {
+          position: relative !important;
+          z-index: 2 !important;
+          height: 190px !important;
+          min-height: 190px !important;
+          padding: 20px 58px 18px 20px !important;
+          box-sizing: border-box !important;
+
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          justify-content: flex-start !important;
+
+          overflow: hidden !important;
+        }
+
+        /* Valeur principale */
+        body .content-wrapper .small-box h3 {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-height: 56px !important;
+          margin: 0 0 14px 0 !important;
+          padding: 0 !important;
+
+          color: white !important;
+          font-size: 36px !important;
+          line-height: 1.08 !important;
+          font-weight: 800 !important;
+          text-align: left !important;
+
+          white-space: normal !important;
+          word-break: keep-all !important;
+          overflow-wrap: normal !important;
+          hyphens: none !important;
+          overflow: hidden !important;
+          text-overflow: clip !important;
+        }
+
+        /* Date : lisible sur deux lignes au maximum */
+        body .content-wrapper #vb_issue .small-box h3,
+        body .content-wrapper #vb_issue h3 {
+          font-size: 29px !important;
+          line-height: 1.08 !important;
+          min-height: 64px !important;
+          margin-bottom: 8px !important;
+        }
+
+        /* Libellés : mots entiers, maximum trois lignes */
+        body .content-wrapper .small-box p {
+          display: -webkit-box !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+
+          color: white !important;
+          font-size: 17px !important;
+          line-height: 1.28 !important;
+          font-weight: 500 !important;
+          text-align: left !important;
+
+          white-space: normal !important;
+          word-break: keep-all !important;
+          overflow-wrap: normal !important;
+          hyphens: none !important;
+
+          -webkit-box-orient: vertical !important;
+          -webkit-line-clamp: 4 !important;
+          overflow: hidden !important;
+        }
+
+        /* Icônes plus petites et réellement décoratives */
+        body .content-wrapper .small-box .icon {
+          position: absolute !important;
+          top: auto !important;
+          right: 10px !important;
+          bottom: 8px !important;
+          z-index: 1 !important;
+
+          font-size: 64px !important;
+          opacity: 0.14 !important;
+          pointer-events: none !important;
+        }
+
+        body .content-wrapper .small-box .icon i {
+          font-size: 64px !important;
+        }
+
+        /* Écrans moyens : trois cartes par ligne si nécessaire */
+        @media (max-width: 1250px) {
+          body .content-wrapper .small-box {
+            height: 175px !important;
+            min-height: 175px !important;
+          }
+
+          body .content-wrapper .small-box > .inner {
+            height: 175px !important;
+            min-height: 175px !important;
+            padding: 18px 54px 16px 18px !important;
+          }
+
+          body .content-wrapper .small-box h3 {
+            font-size: 32px !important;
+            min-height: 48px !important;
+            margin-bottom: 10px !important;
+          }
+
+          body .content-wrapper #vb_issue .small-box h3,
+          body .content-wrapper #vb_issue h3 {
+            font-size: 25px !important;
+            min-height: 56px !important;
+          }
+
+          body .content-wrapper .small-box p {
+            font-size: 16px !important;
+          }
+
+          body .content-wrapper .small-box .icon,
+          body .content-wrapper .small-box .icon i {
+            font-size: 56px !important;
+          }
+        }
+
+        /* Téléphone */
+        @media (max-width: 767px) {
+          body .content-wrapper .small-box,
+          body .content-wrapper .small-box > .inner {
+            height: 155px !important;
+            min-height: 155px !important;
+          }
+
+          body .content-wrapper .small-box h3 {
+            font-size: 30px !important;
+            min-height: 42px !important;
+          }
+
+          body .content-wrapper #vb_issue .small-box h3,
+          body .content-wrapper #vb_issue h3 {
+            font-size: 23px !important;
+          }
+
+          body .content-wrapper .small-box p {
+            font-size: 15px !important;
+          }
+        }
+      ")),
+
+      tags$style(HTML("
+        /* PREIS_CARD_TEXT_CONTAINMENT_FINAL */
+
+        /* La carte s'agrandit si le texte occupe deux lignes */
+        .small-box {
+          min-height: 190px !important;
+          height: auto !important;
+          overflow: hidden !important;
+          border-radius: 15px !important;
+        }
+
+        /* Réserver de la place pour l'icône à droite */
+        .small-box > .inner {
+          min-height: 190px !important;
+          height: auto !important;
+          padding: 18px 72px 18px 16px !important;
+          box-sizing: border-box !important;
+          overflow: visible !important;
+        }
+
+        /* Valeur principale : jamais hors du cadre */
+        .small-box h3 {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 0 18px 0 !important;
+
+          font-size: clamp(25px, 2.1vw, 40px) !important;
+          line-height: 1.08 !important;
+          font-weight: 800 !important;
+
+          white-space: normal !important;
+          overflow-wrap: anywhere !important;
+          word-break: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+        }
+
+        /* Libellé descriptif sous la valeur */
+        .small-box p {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+
+          font-size: clamp(14px, 1.15vw, 20px) !important;
+          line-height: 1.32 !important;
+
+          white-space: normal !important;
+          overflow-wrap: break-word !important;
+          word-break: normal !important;
+          overflow: visible !important;
+        }
+
+        /* Traitement particulier de la valeur No dated issue */
+        #vb_issue .small-box h3,
+        #vb_issue h3 {
+          font-size: clamp(20px, 1.65vw, 30px) !important;
+          line-height: 1.12 !important;
+          white-space: normal !important;
+          overflow-wrap: break-word !important;
+        }
+
+        /* L'icône reste derrière le texte */
+        .small-box .icon {
+          right: 10px !important;
+          top: 38px !important;
+          font-size: 70px !important;
+          opacity: 0.12 !important;
+          pointer-events: none !important;
+        }
+
+        @media (max-width: 1200px) {
+          .small-box,
+          .small-box > .inner {
+            min-height: 180px !important;
+          }
+
+          .small-box > .inner {
+            padding: 16px 58px 16px 14px !important;
+          }
+
+          .small-box h3 {
+            font-size: 27px !important;
+            margin-bottom: 14px !important;
+          }
+
+          #vb_issue .small-box h3,
+          #vb_issue h3 {
+            font-size: 21px !important;
+          }
+
+          .small-box p {
+            font-size: 15px !important;
+          }
+
+          .small-box .icon {
+            font-size: 58px !important;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .small-box,
+          .small-box > .inner {
+            min-height: 155px !important;
+          }
+
+          .small-box h3 {
+            font-size: 25px !important;
+          }
+
+          #vb_issue .small-box h3,
+          #vb_issue h3 {
+            font-size: 20px !important;
+          }
+        }
+      ")),
+
+      tags$style(HTML("
+        /* PREIS_HEADER_CENTER_FINAL */
+
+        .skin-blue .main-header .navbar {
+          position: relative !important;
+        }
+
+        .skin-blue .main-header .navbar .preis-permanent-title {
+          position: absolute !important;
+          top: 0 !important;
+          left: 50% !important;
+          right: auto !important;
+          float: none !important;
+          transform: translateX(-50%) !important;
+
+          width: calc(100% - 180px) !important;
+          max-width: 1050px !important;
+          height: 64px !important;
+
+          margin: 0 !important;
+          padding: 0 20px !important;
+
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+
+          text-align: center !important;
+          box-sizing: border-box !important;
+          z-index: 5 !important;
+          pointer-events: none !important;
+        }
+
+        .preis-permanent-title-content {
+          width: 100% !important;
+          height: 64px !important;
+
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+
+          text-align: center !important;
+          line-height: 1.12 !important;
+        }
+
+        .preis-permanent-main-title {
+          width: 100% !important;
+          margin: 0 !important;
+
+          color: white !important;
+          font-size: 21px !important;
+          font-weight: 800 !important;
+          text-align: center !important;
+          white-space: nowrap !important;
+        }
+
+        .preis-permanent-subtitle {
+          width: 100% !important;
+          margin: 5px 0 0 0 !important;
+
+          color: white !important;
+          font-size: 13px !important;
+          font-weight: 400 !important;
+          text-align: center !important;
+          white-space: nowrap !important;
+          opacity: 0.96 !important;
+        }
+
+        @media (max-width: 1100px) {
+          .skin-blue .main-header .navbar .preis-permanent-title {
+            width: calc(100% - 110px) !important;
+            padding: 0 10px !important;
+          }
+
+          .preis-permanent-main-title {
+            font-size: 17px !important;
+          }
+
+          .preis-permanent-subtitle {
+            font-size: 11px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .preis-permanent-subtitle {
+            display: none !important;
+          }
+
+          .preis-permanent-main-title {
+            font-size: 14px !important;
+            white-space: normal !important;
+          }
+        }
+      ")),
       tags$style(HTML("
         .skin-blue .main-header .logo {background: linear-gradient(90deg, #1E7F67 0%, #7A1D2F 100%) !important; color:white !important; font-weight:700;}
         .skin-blue .main-header .navbar {background: linear-gradient(90deg, #1E7F67 0%, #7A1D2F 100%) !important;}
+        .skin-blue .main-header .logo {height:64px !important; line-height:64px !important; padding:5px 10px !important;}
+        .skin-blue .main-header .navbar {min-height:64px !important;}
+        .skin-blue .main-sidebar {padding-top:64px !important;}
+        .content-wrapper {padding-top:14px !important;}
+        .africacdc-header-logo {width:125px; max-width:48%; height:auto; vertical-align:middle; margin-right:8px;}
+        .preis-header-title {font-size:17px; font-weight:800; vertical-align:middle; white-space:nowrap;}
+        .preis-permanent-title {
+          float:left !important;
+          height:64px !important;
+          margin:0 !important;
+          padding:0 15px !important;
+          list-style:none !important;
+          pointer-events:none;
+        }
+        .preis-permanent-title-content {
+          height:64px;
+          display:flex;
+          flex-direction:column;
+          justify-content:center;
+          color:white;
+          line-height:1.1;
+        }
+        .preis-permanent-main-title {
+          font-size:20px;
+          font-weight:800;
+          white-space:nowrap;
+        }
+        .preis-permanent-subtitle {
+          margin-top:4px;
+          font-size:12px;
+          font-weight:400;
+          opacity:0.95;
+          white-space:nowrap;
+        }
+        @media (max-width:1100px) {
+          .preis-permanent-main-title {font-size:16px;}
+          .preis-permanent-subtitle {font-size:10px;}
+        }
+        @media (max-width:850px) {
+          .preis-permanent-subtitle {display:none;}
+          .preis-permanent-main-title {
+            font-size:14px;
+            white-space:normal;
+          }
+        }
         .skin-blue .main-sidebar {background-color:#0f2f36 !important;}
         .content-wrapper, .right-side {background-color:#f2f4f7 !important;}
+        body, .form-control, .selectize-input, .selectize-dropdown, .control-label {font-size:17px !important;}
+        .sidebar-menu>li>a {font-size:18px !important; padding-top:15px !important; padding-bottom:15px !important;}
+        .sidebar-menu>li>a>.fa, .sidebar-menu>li>a>.fas, .sidebar-menu>li>a>.far {font-size:21px !important; width:25px !important;}
+        .btn {font-size:16px !important; font-weight:700 !important;}
         .small-box {border-radius:12px !important; box-shadow:0 2px 8px rgba(0,0,0,0.08) !important; min-height:136px !important;}
         .small-box .inner {min-height:100px !important;}
-        .small-box h3 {font-size:34px !important; font-weight:700 !important;}
-        .small-box p {font-size:15px !important; min-height:38px !important;}
+        .small-box h3 {font-size:42px !important; font-weight:800 !important;}
+        .small-box p {font-size:18px !important; min-height:42px !important;}
         .box {border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08) !important;}
+        .box-title {font-size:20px !important; font-weight:700 !important;}
         .box.box-solid.box-primary>.box-header {background:#1E7F67 !important;}
-        .note-block {font-size:15px; line-height:1.55; color:#2d3436;}
+        .note-block {font-size:18px; line-height:1.6; color:#2d3436;}
+        .leaflet-control, .leaflet-popup-content {font-size:16px !important;}
+        .leaflet-control-layers, .leaflet-control-attribution {font-size:14px !important;}
 
+        /* Stationary Africa CDC alert pulse: no translation or scale movement. */
         .polio-blink {
-          animation: polioBlink 1s infinite alternate;
+          animation: polioPulse 2.4s ease-in-out infinite;
+          transform-origin: center;
+          transform-box: fill-box;
+        }
+        @keyframes polioPulse {
+          0%, 38% {opacity:1; fill-opacity:.98; stroke-opacity:1; filter:drop-shadow(0 0 7px rgba(242,142,43,.78));}
+          50%, 66% {opacity:0; fill-opacity:0; stroke-opacity:0; filter:none;}
+          78%, 100% {opacity:1; fill-opacity:.98; stroke-opacity:1; filter:drop-shadow(0 0 7px rgba(30,127,103,.78));}
         }
 
-        @keyframes polioBlink {
-          from {
-            transform: scale(1.0);
-            opacity: 0.95;
-          }
-          to {
-            transform: scale(1.18);
-            opacity: 1;
-          }
-        }
+        /* The dedicated map tab uses the full available content viewport. */
+        #shiny-tab-map {padding:0 !important; margin:-14px -15px -15px -15px !important; height:calc(100vh - 64px) !important; overflow:hidden !important;}
+        #shiny-tab-map > .row {margin:0 !important;}
+        #shiny-tab-map .col-sm-12 {padding:0 !important;}
+        #map_full {height:calc(100vh - 64px) !important; min-height:720px !important; width:100% !important;}
+        .leaflet-container {background:#eef3f1;}
       "))
     ),
     tabItems(
       tabItem(
         tabName = "overview",
+
         fluidRow(
           valueBoxOutput("vb_cases", 2),
           valueBoxOutput("vb_countries", 2),
@@ -755,12 +1247,39 @@ ui <- dashboardPage(
         )
       ),
       tabItem(
-        tabName = "map",
+        tabName = "trends",
         fluidRow(
           box(
-            width = 12, title = "Interactive RCC map with synchronized filters", status = "primary", solidHeader = TRUE,
-            leafletOutput("map_full", height = 760)
+            width = 12, status = "warning", solidHeader = TRUE,
+            title = "Interpretation rule",
+            div(
+              class = "note-block",
+              p("These are detections reported by GPEI publication date, not incidence by paralysis onset or specimen collection date."),
+              p("Missing publications are treated as unavailable data, never as zero. Historical coverage varies by year.")
+            )
           )
+        ),
+        fluidRow(
+          box(width = 8, title = "Detections reported by GPEI publication date", status = "primary", solidHeader = TRUE,
+              plotlyOutput("plot_history_time", height = 360)),
+          box(width = 4, title = "Archive coverage by year", status = "primary", solidHeader = TRUE,
+              plotlyOutput("plot_coverage", height = 360))
+        ),
+        fluidRow(
+          box(width = 6, title = "Reported detections by virus type", status = "primary", solidHeader = TRUE,
+              plotlyOutput("plot_history_virus", height = 320)),
+          box(width = 6, title = "Member States with most reported detections", status = "primary", solidHeader = TRUE,
+              plotlyOutput("plot_top_countries", height = 320))
+        ),
+        fluidRow(
+          box(width = 12, title = "Historical data quality and coverage", status = "primary", solidHeader = TRUE,
+              DTOutput("tbl_history_quality"))
+        )
+      ),
+      tabItem(
+        tabName = "map",
+        fluidRow(
+          column(width = 12, leafletOutput("map_full", height = "calc(100vh - 64px)"))
         )
       ),
       tabItem(
@@ -799,6 +1318,20 @@ server <- function(input, output, session) {
     message("[APP] auto-refresh polio data -> rows: ", nrow(x), " | time: ", Sys.time())
     x
   })
+
+  observeEvent(input$reset_filters, {
+    updateSelectInput(session, "rcc", selected = "All")
+    updateSelectInput(session, "country", selected = "All")
+    updateSelectInput(session, "virus_type", selected = "All")
+    updateSelectInput(session, "detection_source", selected = "All")
+    updateSliderInput(session, "year_range", value = c(latest_year, latest_year))
+    updateDateRangeInput(session, "date_range", start = date_max, end = date_max)
+  })
+
+  observeEvent(input$show_history, {
+    updateSliderInput(session, "year_range", value = c(min(year_levels), max(year_levels)))
+    updateDateRangeInput(session, "date_range", start = date_min, end = date_max)
+  })
   
   observe({
     df <- polio_df_reactive()
@@ -815,6 +1348,14 @@ server <- function(input, output, session) {
     if (!is.null(input$date_range) && length(input$date_range) == 2) {
       df <- df %>%
         filter(is.na(issue_date) | (issue_date >= input$date_range[1] & issue_date <= input$date_range[2]))
+    }
+    if (!is.null(input$year_range) && length(input$year_range) == 2) {
+      df <- df %>%
+        filter(
+          is.na(issue_date) |
+            (as.integer(format(issue_date, "%Y")) >= input$year_range[1] &
+               as.integer(format(issue_date, "%Y")) <= input$year_range[2])
+        )
     }
     
     countries_now <- sort(unique(df$country))
@@ -852,6 +1393,14 @@ server <- function(input, output, session) {
       x <- x %>%
         filter(is.na(issue_date) | (issue_date >= input$date_range[1] & issue_date <= input$date_range[2]))
     }
+    if (!is.null(input$year_range) && length(input$year_range) == 2) {
+      x <- x %>%
+        filter(
+          is.na(issue_date) |
+            (as.integer(format(issue_date, "%Y")) >= input$year_range[1] &
+               as.integer(format(issue_date, "%Y")) <= input$year_range[2])
+        )
+    }
     
     x
   })
@@ -865,7 +1414,11 @@ server <- function(input, output, session) {
         iso3    = toupper(norm_txt(iso3)),
         rcc_geo = clean_rcc(rcc),
         rcc_ov  = .COUNTRY_RCC_OVERRIDE[country],
-        rcc     = dplyr::coalesce(rcc_ov, ifelse(rcc_geo=="Unspecified", NA_character_, rcc_geo), "Unspecified")
+        rcc     = dplyr::coalesce(
+          as.character(rcc_ov),
+          dplyr::na_if(as.character(rcc_geo), "Unspecified"),
+          "Unspecified"
+        )
       ) %>%
       select(-rcc_geo, -rcc_ov)
     
@@ -988,7 +1541,7 @@ server <- function(input, output, session) {
         dragging = TRUE
       )
     ) %>%
-      addProviderTiles("CartoDB.Positron") %>%
+      addProviderTiles(providers$OpenStreetMap) %>%
       fitBounds(lng1 = -25, lat1 = -38, lng2 = 60, lat2 = 40) %>%
       setMaxBounds(lng1 = -30, lat1 = -40, lng2 = 65, lat2 = 42)
     
@@ -1024,8 +1577,9 @@ server <- function(input, output, session) {
       mks <- mks %>%
         mutate(
           marker_label = icon,
-          marker_fill = "#C62828",
-          marker_radius = pmax(7, sqrt(pmax(cases, 1)) * 1.6)
+          marker_fill = virus_colour(virus_type),
+          marker_stroke = marker_fill,
+          marker_radius = pmin(34, pmax(13, sqrt(pmax(cases, 1)) * 2.35))
         )
       
       m <- m %>%
@@ -1035,8 +1589,8 @@ server <- function(input, output, session) {
           lat = ~lat,
           radius = ~marker_radius,
           stroke = TRUE,
-          weight = 1.5,
-          color = "#7F0000",
+          weight = 3,
+          color = ~marker_stroke,
           fillColor = ~marker_fill,
           fillOpacity = 0.95,
           popup = ~paste0(
@@ -1065,14 +1619,15 @@ server <- function(input, output, session) {
             direction = "center",
             textOnly = TRUE,
             style = list(
-              "font-size" = "9px",
-              "font-weight" = "700",
+              "font-size" = "13px",
+              "font-weight" = "800",
               "color" = "white",
               "background" = "transparent",
               "border" = "none",
               "box-shadow" = "none",
               "text-align" = "center",
-              "line-height" = "10px"
+              "line-height" = "14px",
+              "text-shadow" = "0 1px 3px rgba(0,0,0,.85)"
             )
           ),
           group = "Polio markers"
@@ -1080,7 +1635,7 @@ server <- function(input, output, session) {
         addControl(
           html = HTML(
             paste0(
-              "<div style='background:white;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:12px;'>",
+              "<div style='background:white;padding:12px 14px;border-radius:10px;border:2px solid #1E7F67;font-size:16px;line-height:1.55;'>",
               "<b>Marker meaning</b><br>",
               "<span style='display:inline-block;width:12px;height:12px;border-radius:50%;background:#C62828;margin-right:6px;'></span> H = Human<br>",
               "<span style='display:inline-block;width:12px;height:12px;border-radius:50%;background:#C62828;margin-right:6px;'></span> E = Environmental<br>",
@@ -1154,10 +1709,13 @@ server <- function(input, output, session) {
       text = paste0("RCC: ", rcc, "<br>Cases: ", cases)
     )) +
       geom_col(show.legend = FALSE) +
-      coord_flip() +
+      geom_text(aes(label = comma(cases)), hjust = -0.15, color = "#173F3A", fontface = "bold", size = 3.5) +
+      coord_flip(clip = "off") +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
       scale_fill_manual(values = rcc_palette, drop = FALSE) +
       labs(x = NULL, y = "Cases") +
-      theme_minimal(base_size = 12)
+      theme_minimal(base_size = 12) +
+      theme(plot.margin = margin(5.5, 30, 5.5, 5.5))
     
     ggplotly(p, tooltip = "text")
   })
@@ -1172,12 +1730,17 @@ server <- function(input, output, session) {
     p <- ggplot(df, aes(
       x = reorder(virus_type, cases),
       y = cases,
+      fill = virus_type,
       text = paste0("Virus type: ", virus_type, "<br>Cases: ", cases)
     )) +
-      geom_col(fill = "#7A1D2F") +
-      coord_flip() +
+      geom_col() +
+      geom_text(aes(label = comma(cases)), hjust = -0.15, color = "#173F3A", fontface = "bold", size = 3.5) +
+      coord_flip(clip = "off") +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
+      scale_fill_manual(values = virus_palette, drop = FALSE) +
       labs(x = NULL, y = "Cases") +
-      theme_minimal(base_size = 12)
+      theme_minimal(base_size = 12) +
+      theme(plot.margin = margin(5.5, 30, 5.5, 5.5))
     
     ggplotly(p, tooltip = "text")
   })
@@ -1196,10 +1759,13 @@ server <- function(input, output, session) {
       text = paste0("Detection source: ", detection_source, "<br>Cases: ", cases)
     )) +
       geom_col(show.legend = FALSE) +
-      coord_flip() +
+      geom_text(aes(label = comma(cases)), hjust = -0.15, color = "#173F3A", fontface = "bold", size = 3.5) +
+      coord_flip(clip = "off") +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
       scale_fill_manual(values = detect_palette, drop = FALSE) +
       labs(x = NULL, y = "Cases") +
-      theme_minimal(base_size = 12)
+      theme_minimal(base_size = 12) +
+      theme(plot.margin = margin(5.5, 30, 5.5, 5.5))
     
     ggplotly(p, tooltip = "text")
   })
@@ -1207,7 +1773,7 @@ server <- function(input, output, session) {
   output$plot_time <- renderPlotly({
     df <- filt_polio() %>%
       filter(!is.na(issue_date)) %>%
-      group_by(issue_date, detection_source) %>%
+      group_by(issue_date, virus_type) %>%
       summarise(cases = sum(cases, na.rm = TRUE), .groups = "drop")
     
     if (nrow(df) == 0) return(empty_plotly("No dated time series available."))
@@ -1215,16 +1781,125 @@ server <- function(input, output, session) {
     p <- ggplot(df, aes(
       x = issue_date,
       y = cases,
-      color = detection_source,
-      text = paste0("Date: ", issue_date, "<br>Detection source: ", detection_source, "<br>Cases: ", cases)
+      color = virus_type,
+      text = paste0("Date: ", issue_date, "<br>Virus type: ", virus_type, "<br>Cases: ", cases)
     )) +
       geom_line(linewidth = 1) +
       geom_point(size = 2) +
-      scale_color_manual(values = detect_palette, drop = FALSE) +
-      labs(x = NULL, y = "Cases", color = "Detection source") +
+      geom_text(aes(label = ifelse(cases > 0, comma(cases), "")), vjust = -0.8, size = 3, show.legend = FALSE) +
+      scale_color_manual(values = virus_palette, drop = FALSE) +
+      scale_y_continuous(expand = expansion(mult = c(0.04, 0.16))) +
+      labs(x = NULL, y = "Cases", color = "Virus type") +
       theme_minimal(base_size = 12)
     
     ggplotly(p, tooltip = "text")
+  })
+
+  output$plot_history_time <- renderPlotly({
+    df <- filt_polio() %>%
+      filter(!is.na(issue_date)) %>%
+      group_by(issue_date, virus_type) %>%
+      summarise(detections = sum(cases, na.rm = TRUE), .groups = "drop")
+    if (!nrow(df)) return(empty_plotly("No historical publication data for these filters."))
+    p <- ggplot(df, aes(
+      issue_date, detections, colour = virus_type,
+      text = paste0(
+        "Publication date: ", issue_date,
+        "<br>Virus type: ", virus_type,
+        "<br>Reported detections: ", comma(detections)
+      )
+    )) +
+      geom_line(aes(group = virus_type), linewidth = 0.8, na.rm = TRUE) +
+      geom_point(size = 1.8) +
+      geom_text(aes(label = ifelse(detections > 0, comma(detections), "")), vjust = -0.75, size = 2.8, show.legend = FALSE) +
+      scale_color_manual(values = virus_palette, drop = FALSE) +
+      scale_y_continuous(expand = expansion(mult = c(0.04, 0.16))) +
+      labs(x = NULL, y = "Reported detections", colour = "Virus type") +
+      theme_minimal(base_size = 12)
+    ggplotly(p, tooltip = "text")
+  })
+
+  output$plot_coverage <- renderPlotly({
+    df <- filt_polio() %>%
+      filter(!is.na(issue_date)) %>%
+      mutate(year = as.integer(format(issue_date, "%Y"))) %>%
+      group_by(year) %>%
+      summarise(publications_available = n_distinct(issue_date), .groups = "drop")
+    if (!nrow(df)) return(empty_plotly("No coverage data for these filters."))
+    p <- ggplot(df, aes(
+      factor(year), publications_available,
+      text = paste0("Year: ", year, "<br>Available publication dates: ", publications_available)
+    )) +
+      geom_col(fill = "#1E7F67") +
+      geom_text(aes(label = publications_available), vjust = -0.45, color = "#173F3A", fontface = "bold") +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+      labs(x = "Publication year", y = "Available publication dates") +
+      theme_minimal(base_size = 12)
+    ggplotly(p, tooltip = "text")
+  })
+
+  output$plot_history_virus <- renderPlotly({
+    df <- filt_polio() %>%
+      filter(virus_type != "", virus_type != "Unspecified") %>%
+      group_by(virus_type) %>%
+      summarise(detections = sum(cases, na.rm = TRUE), .groups = "drop")
+    if (!nrow(df)) return(empty_plotly("No virus data for these filters."))
+    p <- ggplot(df, aes(
+      virus_type, detections, fill = virus_type,
+      text = paste0(
+        "Virus: ", virus_type,
+        "<br>Reported detections: ", comma(detections)
+      )
+    )) +
+      geom_col(show.legend = FALSE) +
+      geom_text(aes(label = comma(detections)), vjust = -0.45, color = "#173F3A", fontface = "bold", size = 3.6) +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.16))) +
+      scale_fill_manual(values = virus_palette, drop = FALSE) +
+      labs(x = NULL, y = "Reported detections") +
+      theme_minimal(base_size = 12)
+    ggplotly(p, tooltip = "text")
+  })
+
+  output$plot_top_countries <- renderPlotly({
+    df <- filt_polio() %>%
+      filter(country != "") %>%
+      group_by(country) %>%
+      summarise(detections = sum(cases, na.rm = TRUE), .groups = "drop") %>%
+      arrange(desc(detections)) %>%
+      slice_head(n = 12)
+    if (!nrow(df)) return(empty_plotly("No Member State data for these filters."))
+    p <- ggplot(df, aes(
+      reorder(country, detections), detections,
+      fill = "Africa CDC",
+      text = paste0("Member State: ", country, "<br>Reported detections: ", comma(detections))
+    )) +
+      geom_col(show.legend = FALSE) +
+      geom_text(aes(label = comma(detections)), hjust = -0.15, color = "#173F3A", fontface = "bold", size = 3.5) +
+      coord_flip(clip = "off") +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
+      scale_fill_manual(values = c("Africa CDC" = "#1E7F67")) +
+      labs(x = NULL, y = "Reported detections") +
+      theme_minimal(base_size = 12) +
+      theme(plot.margin = margin(5.5, 34, 5.5, 5.5))
+    ggplotly(p, tooltip = "text")
+  })
+
+  output$tbl_history_quality <- renderDT({
+    df <- filt_polio() %>%
+      filter(!is.na(issue_date)) %>%
+      mutate(year = as.integer(format(issue_date, "%Y"))) %>%
+      group_by(year) %>%
+      summarise(
+        first_publication = min(issue_date),
+        last_publication = max(issue_date),
+        publication_dates_available = n_distinct(issue_date),
+        Member_States = n_distinct(country[country != ""]),
+        records = n(),
+        interpretation = "Available GPEI publications; missing dates are not zero",
+        .groups = "drop"
+      ) %>%
+      arrange(year)
+    datatable(df, rownames = FALSE, options = list(pageLength = 10, scrollX = TRUE))
   })
   
   output$map_overview <- renderLeaflet({
@@ -1312,3 +1987,4 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
