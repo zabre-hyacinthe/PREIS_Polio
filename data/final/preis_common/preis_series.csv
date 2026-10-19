@@ -1,7 +1,7 @@
 module,source,report_id,report_date,geo_level,geo_name,geo_code,indicator,value,value_type,signal_level,provisional,source_url,extracted_at
-polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Democratic Republic of the Congo,COD,cvdpv2_cases_and_env,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-18T05:06:36Z
-polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Madagascar,MDG,cvdpv1_cases,2,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-18T05:06:36Z
-polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Mali,MLI,cvdpv2_cases,2,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-18T05:06:36Z
-polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Nigeria,NGA,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-18T05:06:36Z
-polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Somalia,SOM,cvdpv2_env_samples,4,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-18T05:06:36Z
-polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,South Sudan,SSD,cvdpv1_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-18T05:06:36Z
+polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Democratic Republic of the Congo,COD,cvdpv2_cases_and_env,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-19T05:07:45Z
+polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Madagascar,MDG,cvdpv1_cases,2,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-19T05:07:45Z
+polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Mali,MLI,cvdpv2_cases,2,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-19T05:07:45Z
+polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Nigeria,NGA,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-19T05:07:45Z
+polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,Somalia,SOM,cvdpv2_env_samples,4,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-19T05:07:45Z
+polio,GPEI / Polio This Week,issue_20261014,2026-10-14,country,South Sudan,SSD,cvdpv1_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-19T05:07:45Z
