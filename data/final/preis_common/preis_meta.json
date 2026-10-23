@@ -2,9 +2,9 @@
   "module": "polio",
   "module_label": "Polio — Afrique (cVDPV & WPV)",
   "source": "GPEI / Polio This Week",
-  "last_report_id": "issue_20261014",
-  "last_report_date": "2026-10-14",
-  "last_extracted_at": "2026-10-22T05:07:04Z",
+  "last_report_id": "issue_20261021",
+  "last_report_date": "2026-10-21",
+  "last_extracted_at": "2026-10-23T05:07:04Z",
   "system_status": "alert",
   "n_series_rows": 6,
   "n_countries": 6,
@@ -21,7 +21,7 @@
       "n_countries": 2
     },
     "cVDPV2": {
-      "n_events": 7,
+      "n_events": 8,
       "n_countries": 3
     },
     "cVDPV3": {
@@ -30,11 +30,11 @@
     }
   },
   "countries_alert": [
+    "Chad",
     "Democratic Republic of the Congo",
-    "Madagascar",
-    "Mali",
     "Nigeria",
-    "South Sudan"
+    "South Sudan",
+    "Togo"
   ],
   "source_url": "https://polioeradication.org/about-polio/polio-this-week/",
   "geographic_scope": {
