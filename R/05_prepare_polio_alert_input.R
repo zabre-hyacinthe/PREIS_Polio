@@ -142,6 +142,164 @@ detect_count <- function(x) {
   return(1L)
 }
 
+# ------------------------------------------------------------
+# COMPTAGE ATOMIQUE (ajoute le 27 oct. 2026)
+#
+# detect_count() ci-dessus prenait le PREMIER nombre du texte et valait 1 par
+# defaut : "one cVDPV2 case and three cVDPV2 positive environmental samples"
+# donnait 1 au lieu de 4, et un texte sans nombre donnait 1. Elle n'est plus
+# utilisee pour la colonne count (conservee uniquement pour compatibilite).
+#
+# Le comptage s'appuie maintenant sur R/lib_atomic_parser.R
+# (segment_atomic_events), verifie par tests/test_atomic_audit.R. Regles :
+#   - un texte dont l'extraction est ambigue, vide, ou qui couvre plusieurs
+#     pays donne count = NA et count_status = "review" : jamais 1 par defaut,
+#     jamais de valeur inventee ;
+#   - le signal n'est PAS masque : la ligne est conservee, son type de virus
+#     et son type d'evenement viennent alors des mots-cles du texte (tous les
+#     virus mentionnes, pour ne jamais sous-classer un WPV) ;
+#   - n_cases = cas humains (AFP), n_env_samples = echantillons
+#     environnementaux, comptes tels qu'ecrits dans le bulletin ; count =
+#     n_cases + n_env_samples (nombre de detections, pas de cas).
+# Si les fichiers du module sont absents, toutes les lignes passent en
+# "review" (count NA) avec un avertissement : le pipeline continue sans
+# inventer de nombre.
+# ------------------------------------------------------------
+.load_count_parser <- function(root_dir) {
+  if (exists("segment_atomic_events", mode = "function", envir = .GlobalEnv)) {
+    return(TRUE)
+  }
+  f_norm <- file.path(root_dir, "R", "lib_country_normalize.R")
+  f_atom <- file.path(root_dir, "R", "lib_atomic_parser.R")
+  if (!file.exists(f_norm) || !file.exists(f_atom)) {
+    warning(
+      "[POLIO PREP] Module de comptage introuvable (R/lib_country_normalize.R, ",
+      "R/lib_atomic_parser.R) : tous les comptages seront NA (a verifier), ",
+      "aucun nombre n'est invente.",
+      call. = FALSE
+    )
+    return(FALSE)
+  }
+  ok <- tryCatch({
+    sys.source(f_norm, envir = .GlobalEnv)
+    sys.source(f_atom, envir = .GlobalEnv)
+    TRUE
+  }, error = function(e) {
+    warning("[POLIO PREP] Module de comptage non chargeable : ", conditionMessage(e),
+            " -> comptages NA (a verifier).", call. = FALSE)
+    FALSE
+  })
+  isTRUE(ok) && exists("segment_atomic_events", mode = "function", envir = .GlobalEnv)
+}
+
+.review_virus_labels <- function(x) {
+  x0 <- tolower(.clean_txt(x))
+  v <- character(0)
+  if (stringr::str_detect(x0, "cvdpv1")) v <- c(v, "cVDPV1")
+  if (stringr::str_detect(x0, "cvdpv2")) v <- c(v, "cVDPV2")
+  if (stringr::str_detect(x0, "cvdpv3")) v <- c(v, "cVDPV3")
+  if (stringr::str_detect(x0, "wpv1")) {
+    v <- c(v, "WPV1")
+  } else if (stringr::str_detect(x0, "wpv")) {
+    v <- c(v, "WPV")
+  }
+  if (length(v) == 0) "Unspecified" else v
+}
+
+.count_bullet <- function(raw_bullet, issue_date, source_url, row_id) {
+  # scope_text : texte dont on tire virus et type d'evenement pour une ligne a
+  # verifier. Par defaut tout le texte ; pour un texte multi-pays, seulement le
+  # premier segment (la ligne est rattachee au premier pays), afin de ne pas
+  # attribuer a ce pays un virus mentionne pour un autre pays.
+  as_review <- function(reason, scope_text = raw_bullet) {
+    vt <- .review_virus_labels(scope_text)
+    tibble::tibble(
+      virus_type = vt,
+      n_cases = NA_integer_,
+      n_env_samples = NA_integer_,
+      count_status = "review",
+      count_review_reason = reason,
+      signal_kw = rep(detect_signal_type(scope_text), length(vt))
+    )
+  }
+  ev <- tryCatch(
+    segment_atomic_events(raw_bullet, issue_date, source_url, row_id),
+    error = function(e) e
+  )
+  if (inherits(ev, "error")) {
+    return(as_review(paste0("parser_error: ", conditionMessage(ev))))
+  }
+  if (is.null(ev) || nrow(ev) == 0) {
+    return(as_review("parser_returned_no_rows"))
+  }
+  seg_id <- sub("_e[0-9]+$", "", ev$atomic_segment_id)
+  if (length(unique(seg_id)) != 1L) {
+    return(as_review("multiple_segments_in_one_bullet",
+                     scope_text = ev$atomic_segment_text[1]))
+  }
+  if (any(!is.na(ev$exclusion_reason))) {
+    return(as_review(paste(unique(stats::na.omit(ev$exclusion_reason)), collapse = " | ")))
+  }
+  ev |>
+    dplyr::group_by(virus_type) |>
+    dplyr::summarise(
+      n_cases = sum(count[detection_source == "AFP"]),
+      n_env_samples = sum(count[detection_source == "Environmental"]),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      n_cases = as.integer(n_cases),
+      n_env_samples = as.integer(n_env_samples),
+      count_status = "parsed",
+      count_review_reason = NA_character_,
+      signal_kw = NA_character_
+    )
+}
+
+# Une ligne par (bulletin x type de virus). Un bulletin a un seul virus (cas
+# habituel) garde une seule ligne ; un bulletin a plusieurs virus donne une
+# ligne par virus au lieu de n'en garder qu'un seul.
+.apply_atomic_counts <- function(df, parser_ok, issue_date, source_url, issue_id) {
+  parser_version <- get0("LIB_ATOMIC_PARSER_VERSION", envir = .GlobalEnv,
+                         ifnotfound = "unavailable")
+  parts <- lapply(seq_len(nrow(df)), function(i) {
+    cnt <- if (isTRUE(parser_ok)) {
+      .count_bullet(df$raw_bullet[i], issue_date, source_url,
+                    paste0(issue_id, "_b", i))
+    } else {
+      tibble::tibble(
+        virus_type = .review_virus_labels(df$raw_bullet[i]),
+        n_cases = NA_integer_,
+        n_env_samples = NA_integer_,
+        count_status = "review",
+        count_review_reason = "parser_unavailable",
+        signal_kw = detect_signal_type(df$raw_bullet[i])
+      )
+    }
+    base <- df[rep(i, nrow(cnt)), setdiff(names(df), c("virus_type", "count")), drop = FALSE]
+    dplyr::bind_cols(base, cnt)
+  })
+  out <- dplyr::bind_rows(parts)
+  parsed <- out$count_status == "parsed"
+  kw_signal <- out$signal_kw
+  out$signal_type <- ifelse(
+    parsed,
+    dplyr::case_when(
+      out$n_cases > 0 & out$n_env_samples > 0 ~ "Case + Environmental",
+      out$n_cases > 0 ~ "Case",
+      out$n_env_samples > 0 ~ "Environmental",
+      TRUE ~ "Unspecified"
+    ),
+    kw_signal
+  )
+  out$event_type <- out$signal_type
+  out$count <- ifelse(parsed, out$n_cases + out$n_env_samples, NA_integer_)
+  out$count <- as.integer(out$count)
+  out$signal_kw <- NULL
+  out$parser_version <- parser_version
+  out
+}
+
 extract_gpei_page <- function(url) {
   page <- xml2::read_html(url)
   txt <- page |>
@@ -395,15 +553,25 @@ prepare_polio_alert_input <- function(
         str_detect(tolower(signal_type), "case") ~ "Case",
         TRUE ~ "Unspecified"
       ),
-      count = vapply(summary_text, detect_count, integer(1)),
+      count = NA_integer_,   # remplace par le comptage atomique ci-dessous
       location_text = NA_character_,
       onset_date = NA_character_,
       pathogen = "Polio virus",
       geo_level = "country"
     )
   
+  # Comptage atomique (27 oct. 2026) : voir .load_count_parser()
+  parser_ok <- .load_count_parser(root_dir)
+  df <- .apply_atomic_counts(
+    df,
+    parser_ok = parser_ok,
+    issue_date = as.character(reporting_date),
+    source_url = url,
+    issue_id = issue_id
+  )
+
   ref2 <- .prepare_rcc_reference(rcc_file)
-  
+
   df_joined <- df |>
     left_join(ref2, by = c("country" = "country_join"))
   
@@ -430,6 +598,11 @@ prepare_polio_alert_input <- function(
       signal_type,
       event_type,
       count,
+      n_cases,
+      n_env_samples,
+      count_status,
+      count_review_reason,
+      parser_version,
       summary_text,
       source_url,
       fetched_date,
@@ -480,6 +653,15 @@ prepare_polio_alert_input <- function(
   message("[POLIO PREP] FINAL reporting_date: ", reporting_date_label)
   message("[POLIO PREP] African polio rows retained: ", nrow(out))
   message("[POLIO PREP] Affected African countries retained: ", n_distinct(out$country))
+  n_review <- sum(out$count_status == "review", na.rm = TRUE)
+  message("[POLIO PREP] Counting: ", sum(out$count_status == "parsed", na.rm = TRUE),
+          " row(s) parsed, ", n_review, " row(s) to verify (count = NA, never 1).")
+  if (n_review > 0) {
+    warning("[POLIO PREP] ", n_review, " row(s) with a count to verify: ",
+            paste(unique(paste0(out$country_raw, " [", out$count_review_reason, "]")[out$count_status == "review"]),
+                  collapse = "; "),
+            call. = FALSE)
+  }
   
   invisible(out)
 }

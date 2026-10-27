@@ -155,6 +155,37 @@ events_raw <- if (!is.null(alert_raw) && nrow(alert_raw) > 0) {
   NULL
 }
 
+# Comptage (27 oct. 2026). Le pipeline fournit maintenant n_cases (cas humains,
+# AFP), n_env_samples (echantillons environnementaux) et count_status
+# ("parsed" ou "review"). Un comptage "review" reste NA : il n'est jamais
+# remplace par 1 ni par 0. Le signal reste dans preis_signals ; la ligne est
+# seulement exclue des series chiffrees. Ancien CSV sans ces colonnes : ancienne
+# regle conservee, marquee "legacy_unverified" (comptage non fiable pour les
+# lignes mixtes cas + environnement).
+COUNT_METHOD   <- "none"
+n_count_review <- 0L
+if (!is.null(events_raw) && nrow(events_raw) > 0) {
+  if (all(c("n_cases", "n_env_samples", "count_status") %in% names(events_raw))) {
+    events_raw$n_cases_src  <- suppressWarnings(as.numeric(events_raw$n_cases))
+    events_raw$n_env_src    <- suppressWarnings(as.numeric(events_raw$n_env_samples))
+    events_raw$count_status <- ifelse(is.na(events_raw$count_status), "review",
+                                      as.character(events_raw$count_status))
+    COUNT_METHOD <- "atomic_parser"
+  } else {
+    events_raw$n_cases_src  <- ifelse(grepl("case", events_raw$event_type, ignore.case = TRUE),
+                                      as.numeric(events_raw$count), 0)
+    events_raw$n_env_src    <- ifelse(grepl("environ", events_raw$event_type, ignore.case = TRUE),
+                                      as.numeric(events_raw$count), 0)
+    events_raw$count_status <- "legacy_unverified"
+    COUNT_METHOD <- "legacy_first_number"
+    warning("Source sans colonnes de comptage atomique (n_cases, n_env_samples, ",
+            "count_status) : ancienne regle conservee, comptage non fiable.")
+  }
+  n_count_review <- sum(events_raw$count_status == "review", na.rm = TRUE)
+  cat("  Comptage :", COUNT_METHOD, "|",
+      n_count_review, "ligne(s) a verifier (comptage NA)\n")
+}
+
 # Métadonnées de la dernière issue
 if (!is.null(last_issue) && nrow(last_issue) > 0) {
   last_issue_id   <- last_issue$issue_id[1]
@@ -255,17 +286,18 @@ if (!is.null(events_raw) && nrow(events_raw) > 0) {
       geo_code     = toupper(coalesce(iso3, NA_character_)),
       rcc_raw      = coalesce(rcc, NA_character_),
       signal_level = map_polio_signal_level(virus_type, event_type),
-      n_cases      = ifelse(grepl("case", event_type, ignore.case = TRUE),
-                            as.numeric(count), 0),
-      n_env        = ifelse(grepl("environ", event_type, ignore.case = TRUE),
-                            as.numeric(count), 0),
-      n_events     = as.numeric(count)
+      n_cases      = n_cases_src,
+      n_env        = n_env_src,
+      n_events     = as.numeric(count),
+      is_review    = count_status == "review"
     ) %>%
     group_by(geo_name, geo_code, rcc_raw) %>%
     summarise(
-      total_events = sum(n_events, na.rm = TRUE),
-      total_cases  = sum(n_cases,  na.rm = TRUE),
-      total_env    = sum(n_env,    na.rm = TRUE),
+      # Un pays dont aucun comptage n'est fiable garde NA (jamais 0 ni 1).
+      total_events = if (all(is.na(n_events))) NA_real_ else sum(n_events, na.rm = TRUE),
+      total_cases  = if (all(is.na(n_cases)))  NA_real_ else sum(n_cases,  na.rm = TRUE),
+      total_env    = if (all(is.na(n_env)))    NA_real_ else sum(n_env,    na.rm = TRUE),
+      n_review     = sum(is_review, na.rm = TRUE),
       # Niveau de signal le plus élevé parmi tous les événements du pays
       signal_level = dplyr::first(signal_level[order(
         match(signal_level,
@@ -304,6 +336,7 @@ if (!is.null(events_raw) && nrow(events_raw) > 0) {
       # Colonnes supplémentaires spécifiques Polio (conservées en extra)
       polio_cases  = total_cases,
       polio_env    = total_env,
+      polio_n_review = n_review,
       polio_virus  = virus_types,
       geo_lat      = lat,
       geo_lon      = lon,
@@ -316,10 +349,12 @@ if (!is.null(events_raw) && nrow(events_raw) > 0) {
       signal_level, provisional,
       source_url, extracted_at,
       # Colonnes extra Polio (le dashboard peut les utiliser pour la carte)
-      polio_cases, polio_env, polio_virus,
+      polio_cases, polio_env, polio_n_review, polio_virus,
       geo_lat, geo_lon, rcc
     ) %>%
-    filter(!is.na(value), value > 0) %>%
+    # On garde aussi un pays dont le comptage est a verifier (value = NA) :
+    # le signal ne doit pas disparaitre de la carte faute de nombre fiable.
+    filter((!is.na(value) & value > 0) | polio_n_review > 0) %>%
     arrange(desc(signal_level), desc(value))
   
   out_zones <- file.path(DIR_COMMON, "preis_zones.csv")
@@ -438,12 +473,18 @@ if (!is.null(events_raw) && nrow(events_raw) > 0) {
     group_by(virus_type) %>%
     summarise(
       n_events   = sum(as.numeric(count), na.rm = TRUE),
+      n_cases    = sum(n_cases_src, na.rm = TRUE),
+      n_env_samples = sum(n_env_src, na.rm = TRUE),
+      n_rows_to_verify = sum(count_status == "review", na.rm = TRUE),
       n_countries = n_distinct(coalesce(iso3, country_raw)),
       .groups = "drop"
     ) %>%
     split(.$virus_type) %>%
     lapply(function(x) list(
       n_events    = x$n_events,
+      n_cases     = x$n_cases,
+      n_env_samples = x$n_env_samples,
+      n_rows_to_verify = x$n_rows_to_verify,
       n_countries = x$n_countries
     ))
 }
@@ -497,8 +538,13 @@ meta <- list(
     provisional    = "FALSE — source officielle GPEI",
     update_freq    = "Hebdomadaire (mardi/mercredi)"
   ),
+  count_method    = COUNT_METHOD,
+  n_rows_count_to_verify = n_count_review,
+  count_note      = paste0(
+    "n_events = cas humains + echantillons environnementaux (detections), ",
+    "pas un nombre de cas. Comptage NA = a verifier, jamais 0 ni 1."),
   schema_version  = "1.0",
-  adapter_version = "00_preis_adapter_polio.R v1.0"
+  adapter_version = "00_preis_adapter_polio.R v1.1"
 )
 
 out_meta <- file.path(DIR_COMMON, "preis_meta.json")

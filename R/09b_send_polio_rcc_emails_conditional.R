@@ -354,6 +354,24 @@ send_polio_rcc_emails_conditional <- function(
         if (nzchar(virus_type)) suffix <- c(suffix, virus_type)
         if (nzchar(signal_type)) suffix <- c(suffix, signal_type)
 
+        # Detail du comptage (27 oct. 2026) : cas humains / echantillons
+        # environnementaux tels que lus dans le texte source, ou mention
+        # "a verifier" si le texte n'a pas pu etre interprete sans ambiguite.
+        if (all(c("count_status", "n_cases", "n_env_samples") %in% names(sub_alerts))) {
+          cs <- trimws(as.character(r[["count_status"]]))
+          if (!is.na(cs) && cs == "review") {
+            suffix <- c(suffix, "count to verify / nombre \u00e0 v\u00e9rifier")
+          } else if (!is.na(cs) && cs == "parsed") {
+            nc <- suppressWarnings(as.integer(trimws(as.character(r[["n_cases"]]))))
+            ne <- suppressWarnings(as.integer(trimws(as.character(r[["n_env_samples"]]))))
+            parts <- c(
+              if (!is.na(nc) && nc > 0) paste0(nc, " human case(s)"),
+              if (!is.na(ne) && ne > 0) paste0(ne, " environmental sample(s)")
+            )
+            if (length(parts) > 0) suffix <- c(suffix, paste(parts, collapse = " + "))
+          }
+        }
+
         paste0(
           "- ", country, " (", rcc_lab, " RCC): ", summary_txt,
           if (length(suffix) > 0) paste0(" [", paste(suffix, collapse = " | "), "]") else ""

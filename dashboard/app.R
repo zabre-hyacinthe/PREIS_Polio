@@ -163,6 +163,16 @@ read_dynamic <- function(url, local_fp) {
   safe_read_csv(local_fp)
 }
 
+# Etiquettes de chiffres des graphiques (27 oct. 2026) : plotly ignore hjust et
+# vjust de geom_text, si bien que les nombres se retrouvaient centres sur le bout
+# des barres (illisibles). On decale donc la POSITION de l'etiquette (valeur +
+# marge proportionnelle au maximum affiche), ce qui donne le meme rendu avec plotly.
+label_nudge <- function(v, frac = 0.07) {
+  m <- suppressWarnings(max(v, na.rm = TRUE))
+  if (!is.finite(m) || m <= 0) m <- 1
+  m * frac
+}
+
 empty_plotly <- function(msg = "No data available.") {
   plotly::plotly_empty(type = "scatter", mode = "markers") %>%
     plotly::layout(
@@ -224,6 +234,34 @@ clean_virus_type <- function(x) {
     z == "" ~ "Unspecified",
     TRUE ~ z
   )
+}
+
+# Lignes en direct (27 oct. 2026) : le pipeline fournit n_cases (cas humains) et
+# n_env_samples (echantillons environnementaux) pour un meme bulletin. Une ligne
+# "Case + Environmental" est separee en deux lignes (AFP / Environmental), comme
+# dans l'historique (une ligne par virus et par source), pour que les totaux
+# humains et environnementaux ne soient ni melanges ni comptes deux fois.
+# Une ligne a verifier (count_status = "review") garde un comptage NA.
+# Sans ces colonnes (anciens CSV), les donnees sont retournees inchangees.
+split_combined_live_rows <- function(df) {
+  need <- c("n_cases", "n_env_samples", "count_status")
+  if (!all(need %in% names(df))) return(df)
+  nc <- suppressWarnings(as.numeric(df$n_cases))
+  ne <- suppressWarnings(as.numeric(df$n_env_samples))
+  is_comb <- !is.na(df$count_status) & df$count_status == "parsed" &
+    !is.na(nc) & !is.na(ne) & nc > 0 & ne > 0
+  if (!any(is_comb)) return(df)
+  h <- df[is_comb, , drop = FALSE]
+  h$count <- nc[is_comb]
+  h$signal_type <- "Case"
+  h$event_type <- "Case"
+  h$detection_source <- "AFP"
+  e <- df[is_comb, , drop = FALSE]
+  e$count <- ne[is_comb]
+  e$signal_type <- "Environmental"
+  e$event_type <- "Environmental"
+  e$detection_source <- "Environmental"
+  dplyr::bind_rows(df[!is_comb, , drop = FALSE], h, e)
 }
 
 clean_detection_source <- function(x) {
@@ -494,6 +532,7 @@ build_polio_df <- function() {
   polio_alert   <- polio_alert   %>% mutate(rcc = as.character(rcc))   
   polio_raw <- bind_rows(polio_history, polio_email, polio_alert) %>%
     distinct()
+  polio_raw <- split_combined_live_rows(polio_raw)
   if (nrow(polio_raw) == 0) {
     polio_raw <- tibble(
       issue_id = character(),
@@ -556,7 +595,8 @@ build_polio_df <- function() {
       raw_bullet = norm_txt(raw_bullet)
     ) %>%
     mutate(
-      cases = ifelse(is.na(cases) | cases <= 0, 1, cases),
+      # 27 oct. 2026 : un comptage manquant reste NA (il n'est plus transforme en 1).
+      cases = ifelse(!is.na(cases) & cases < 0, NA_real_, cases),
       issue_date = dplyr::coalesce(issue_date, report_date),
       url_link = make_clickable_link(source_url)
     )
@@ -1429,6 +1469,7 @@ server <- function(input, output, session) {
       group_by(country) %>%
       summarise(
         total_cases_country = sum(cases, na.rm = TRUE),
+        n_verify_country = sum(is.na(cases)),
         n_records_country = n(),
         virus_types_country = paste(sort(unique(virus_type[virus_type != ""])), collapse = ", "),
         detection_sources_country = paste(sort(unique(detection_source[detection_source != ""])), collapse = ", "),
@@ -1441,6 +1482,7 @@ server <- function(input, output, session) {
       group_by(iso3) %>%
       summarise(
         total_cases_iso3 = sum(cases, na.rm = TRUE),
+        n_verify_iso3 = sum(is.na(cases)),
         n_records_iso3 = n(),
         virus_types_iso3 = paste(sort(unique(virus_type[virus_type != ""])), collapse = ", "),
         detection_sources_iso3 = paste(sort(unique(detection_source[detection_source != ""])), collapse = ", "),
@@ -1460,13 +1502,15 @@ server <- function(input, output, session) {
       left_join(agg_iso3, by = "iso3") %>%
       mutate(
         total_cases = dplyr::coalesce(total_cases_country, total_cases_iso3, 0),
+        n_verify = dplyr::coalesce(n_verify_country, n_verify_iso3, 0L),
         n_records = dplyr::coalesce(n_records_country, n_records_iso3, 0),
         virus_types = dplyr::coalesce(virus_types_country, virus_types_iso3, ""),
         detection_sources = dplyr::coalesce(detection_sources_country, detection_sources_iso3, "")
       ) %>%
       select(
         -total_cases_country, -n_records_country, -virus_types_country, -detection_sources_country,
-        -total_cases_iso3, -n_records_iso3, -virus_types_iso3, -detection_sources_iso3
+        -total_cases_iso3, -n_records_iso3, -virus_types_iso3, -detection_sources_iso3,
+        -n_verify_country, -n_verify_iso3
       )
     
     shp
@@ -1496,6 +1540,7 @@ server <- function(input, output, session) {
       summarise(
         lon = dplyr::first(lon),
         lat = dplyr::first(lat),
+        n_to_verify = sum(is.na(cases)),
         cases = sum(cases, na.rm = TRUE),
         n_records = dplyr::n(),
         issue_date = if (all(is.na(issue_date))) {
@@ -1559,7 +1604,10 @@ server <- function(input, output, session) {
           popup = ~paste0(
             "<b>", country, "</b><br/>",
             "<b>RCC:</b> ", rcc, "<br/>",
-            "<b>Total cases:</b> ", total_cases, "<br/>",
+            "<b>Detections (human + environmental):</b> ",
+            ifelse(n_verify > 0 & total_cases == 0, "count to verify",
+                   paste0(total_cases, ifelse(n_verify > 0, paste0(" (+ ", n_verify, " record(s) to verify)"), ""))),
+            "<br/>",
             "<b>Records:</b> ", n_records, "<br/>",
             "<b>Virus type(s):</b> ", ifelse(virus_types == "", "None in filtered data", virus_types), "<br/>",
             "<b>Detection source(s):</b> ", ifelse(detection_sources == "", "None in filtered data", detection_sources)
@@ -1581,7 +1629,12 @@ server <- function(input, output, session) {
           marker_label = icon,
           marker_fill = virus_colour(virus_type),
           marker_stroke = marker_fill,
-          marker_radius = pmin(34, pmax(13, sqrt(pmax(cases, 1)) * 2.35))
+          marker_radius = pmin(34, pmax(13, sqrt(pmax(cases, 1)) * 2.35)),
+          cases_label = dplyr::case_when(
+            n_to_verify > 0 & cases == 0 ~ "count to verify",
+            n_to_verify > 0 ~ paste0(cases, " (+ ", n_to_verify, " record(s) to verify)"),
+            TRUE ~ as.character(cases)
+          )
         )
       
       m <- m %>%
@@ -1600,7 +1653,7 @@ server <- function(input, output, session) {
             "<b>RCC:</b> ", htmlEscape(rcc), "<br/>",
             "<b>Virus type:</b> ", htmlEscape(virus_type), "<br/>",
             "<b>Detection source:</b> ", htmlEscape(detection_source), "<br/>",
-            "<b>Total cases:</b> ", cases, "<br/>",
+            "<b>Detections:</b> ", cases_label, "<br/>",
             "<b>Records:</b> ", n_records, "<br/>",
             "<b>Latest issue date:</b> ", ifelse(is.na(issue_date), "", as.character(issue_date)), "<br/>",
             ifelse(issue_id == "", "", paste0("<b>Issue ID:</b> ", htmlEscape(issue_id), "<br/>")),
@@ -1657,7 +1710,13 @@ server <- function(input, output, session) {
   }
   
   output$vb_cases <- renderValueBox({
-    valueBox(comma(sum(filt_polio()$cases, na.rm = TRUE)), "Total polio cases/detections", icon = icon("virus"), color = "red")
+    n_ver <- sum(is.na(filt_polio()$cases))
+    valueBox(
+      comma(sum(filt_polio()$cases, na.rm = TRUE)),
+      paste0("Total detections (human + environmental)",
+             ifelse(n_ver > 0, paste0(" - ", n_ver, " record(s) to verify"), "")),
+      icon = icon("virus"), color = "red"
+    )
   })
   
   output$vb_countries <- renderValueBox({
@@ -1708,14 +1767,14 @@ server <- function(input, output, session) {
       x = reorder(rcc, cases),
       y = cases,
       fill = rcc,
-      text = paste0("RCC: ", rcc, "<br>Cases: ", cases)
+      text = paste0("RCC: ", rcc, "<br>Detections: ", cases)
     )) +
       geom_col(show.legend = FALSE) +
-      geom_text(aes(label = comma(cases)), hjust = -0.15, color = "#173F3A", fontface = "bold", size = 3.5) +
+      geom_text(aes(y = cases + label_nudge(cases), label = comma(cases)), color = "#173F3A", fontface = "bold", size = 3.5) +
       coord_flip(clip = "off") +
       scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
       scale_fill_manual(values = rcc_palette, drop = FALSE) +
-      labs(x = NULL, y = "Cases") +
+      labs(x = NULL, y = "Detections") +
       theme_minimal(base_size = 12) +
       theme(plot.margin = margin(5.5, 30, 5.5, 5.5))
     
@@ -1733,14 +1792,14 @@ server <- function(input, output, session) {
       x = reorder(virus_type, cases),
       y = cases,
       fill = virus_type,
-      text = paste0("Virus type: ", virus_type, "<br>Cases: ", cases)
+      text = paste0("Virus type: ", virus_type, "<br>Detections: ", cases)
     )) +
       geom_col() +
-      geom_text(aes(label = comma(cases)), hjust = -0.15, color = "#173F3A", fontface = "bold", size = 3.5) +
+      geom_text(aes(y = cases + label_nudge(cases), label = comma(cases)), color = "#173F3A", fontface = "bold", size = 3.5) +
       coord_flip(clip = "off") +
       scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
       scale_fill_manual(values = virus_palette, drop = FALSE) +
-      labs(x = NULL, y = "Cases") +
+      labs(x = NULL, y = "Detections") +
       theme_minimal(base_size = 12) +
       theme(plot.margin = margin(5.5, 30, 5.5, 5.5))
     
@@ -1758,14 +1817,14 @@ server <- function(input, output, session) {
       x = reorder(detection_source, cases),
       y = cases,
       fill = detection_source,
-      text = paste0("Detection source: ", detection_source, "<br>Cases: ", cases)
+      text = paste0("Detection source: ", detection_source, "<br>Detections: ", cases)
     )) +
       geom_col(show.legend = FALSE) +
-      geom_text(aes(label = comma(cases)), hjust = -0.15, color = "#173F3A", fontface = "bold", size = 3.5) +
+      geom_text(aes(y = cases + label_nudge(cases), label = comma(cases)), color = "#173F3A", fontface = "bold", size = 3.5) +
       coord_flip(clip = "off") +
       scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
       scale_fill_manual(values = detect_palette, drop = FALSE) +
-      labs(x = NULL, y = "Cases") +
+      labs(x = NULL, y = "Detections") +
       theme_minimal(base_size = 12) +
       theme(plot.margin = margin(5.5, 30, 5.5, 5.5))
     
@@ -1784,14 +1843,14 @@ server <- function(input, output, session) {
       x = issue_date,
       y = cases,
       color = virus_type,
-      text = paste0("Date: ", issue_date, "<br>Virus type: ", virus_type, "<br>Cases: ", cases)
+      text = paste0("Date: ", issue_date, "<br>Virus type: ", virus_type, "<br>Detections: ", cases)
     )) +
       geom_line(linewidth = 1) +
       geom_point(size = 2) +
-      geom_text(aes(label = ifelse(cases > 0, comma(cases), "")), vjust = -0.8, size = 3, show.legend = FALSE) +
+      geom_text(aes(y = cases + label_nudge(cases, 0.06), label = ifelse(cases > 0, comma(cases), "")), size = 3, show.legend = FALSE) +
       scale_color_manual(values = virus_palette, drop = FALSE) +
       scale_y_continuous(expand = expansion(mult = c(0.04, 0.16))) +
-      labs(x = NULL, y = "Cases", color = "Virus type") +
+      labs(x = NULL, y = "Detections", color = "Virus type") +
       theme_minimal(base_size = 12)
     
     ggplotly(p, tooltip = "text")
@@ -1813,7 +1872,7 @@ server <- function(input, output, session) {
     )) +
       geom_line(aes(group = virus_type), linewidth = 0.8, na.rm = TRUE) +
       geom_point(size = 1.8) +
-      geom_text(aes(label = ifelse(detections > 0, comma(detections), "")), vjust = -0.75, size = 2.8, show.legend = FALSE) +
+      geom_text(aes(y = detections + label_nudge(detections, 0.06), label = ifelse(detections > 0, comma(detections), "")), size = 2.8, show.legend = FALSE) +
       scale_color_manual(values = virus_palette, drop = FALSE) +
       scale_y_continuous(expand = expansion(mult = c(0.04, 0.16))) +
       labs(x = NULL, y = "Reported detections", colour = "Virus type") +
@@ -1833,7 +1892,7 @@ server <- function(input, output, session) {
       text = paste0("Year: ", year, "<br>Available publication dates: ", publications_available)
     )) +
       geom_col(fill = "#1E7F67") +
-      geom_text(aes(label = publications_available), vjust = -0.45, color = "#173F3A", fontface = "bold") +
+      geom_text(aes(y = publications_available + label_nudge(publications_available, 0.06), label = publications_available), color = "#173F3A", fontface = "bold") +
       scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
       labs(x = "Publication year", y = "Available publication dates") +
       theme_minimal(base_size = 12)
@@ -1854,7 +1913,7 @@ server <- function(input, output, session) {
       )
     )) +
       geom_col(show.legend = FALSE) +
-      geom_text(aes(label = comma(detections)), vjust = -0.45, color = "#173F3A", fontface = "bold", size = 3.6) +
+      geom_text(aes(y = detections + label_nudge(detections, 0.06), label = comma(detections)), color = "#173F3A", fontface = "bold", size = 3.6) +
       scale_y_continuous(expand = expansion(mult = c(0, 0.16))) +
       scale_fill_manual(values = virus_palette, drop = FALSE) +
       labs(x = NULL, y = "Reported detections") +
@@ -1876,7 +1935,7 @@ server <- function(input, output, session) {
       text = paste0("Member State: ", country, "<br>Reported detections: ", comma(detections))
     )) +
       geom_col(show.legend = FALSE) +
-      geom_text(aes(label = comma(detections)), hjust = -0.15, color = "#173F3A", fontface = "bold", size = 3.5) +
+      geom_text(aes(y = detections + label_nudge(detections), label = comma(detections)), color = "#173F3A", fontface = "bold", size = 3.5) +
       coord_flip(clip = "off") +
       scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
       scale_fill_manual(values = c("Africa CDC" = "#1E7F67")) +
@@ -1917,12 +1976,13 @@ server <- function(input, output, session) {
       group_by(rcc) %>%
       summarise(
         countries = n_distinct(country[country != ""]),
-        total_cases = sum(cases, na.rm = TRUE),
-        human = sum(cases[detection_source %in% c("Human", "Both")], na.rm = TRUE),
-        environmental = sum(cases[detection_source %in% c("Environmental", "Both")], na.rm = TRUE),
+        total_detections = sum(cases, na.rm = TRUE),
+        human_cases = sum(cases[detection_source %in% c("Human", "Both")], na.rm = TRUE),
+        environmental_detections = sum(cases[detection_source %in% c("Environmental", "Both")], na.rm = TRUE),
+        records_to_verify = sum(is.na(cases)),
         .groups = "drop"
       ) %>%
-      arrange(desc(total_cases), rcc)
+      arrange(desc(total_detections), rcc)
     
     datatable(
       df,
@@ -1935,7 +1995,8 @@ server <- function(input, output, session) {
     df <- filt_polio() %>%
       group_by(country, rcc, virus_type, detection_source) %>%
       summarise(
-        total_cases = sum(cases, na.rm = TRUE),
+        total_detections = sum(cases, na.rm = TRUE),
+        records_to_verify = sum(is.na(cases)),
         latest_issue = if (all(is.na(issue_date))) {
           as.Date(NA)
         } else {
