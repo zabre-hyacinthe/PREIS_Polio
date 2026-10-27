@@ -43,6 +43,12 @@ send_polio_rcc_emails_conditional <- function(
   recipients_path <- make_abs(recipients_path)
   email_core_path <- file.path(project_dir, "R", "60_email.R")
 
+  # Le garde-fou de R/60_email.R verifie les destinataires dans ce meme fichier
+  # (sauf si PREIS_RECIPIENTS_FILE est deja defini explicitement).
+  if (!nzchar(Sys.getenv("PREIS_RECIPIENTS_FILE", ""))) {
+    Sys.setenv(PREIS_RECIPIENTS_FILE = recipients_path)
+  }
+
   if (!file.exists(alerts_path)) {
     stop("alerts file not found: ", alerts_path, call. = FALSE)
   }
@@ -285,9 +291,9 @@ send_polio_rcc_emails_conditional <- function(
     }
 
     subject <- if (is_all_recipient) {
-      paste0("PREIS POLIO Weekly Update – Africa – GPEI Report ", issue_label)
+      paste0("[Prototype non officiel] PREIS POLIO Weekly Update – Africa – GPEI Report ", issue_label)
     } else {
-      paste0("PREIS POLIO Weekly Update – ", recip_rcc, " RCC – GPEI Report ", issue_label)
+      paste0("[Prototype non officiel] PREIS POLIO Weekly Update – ", recip_rcc, " RCC – GPEI Report ", issue_label)
     }
 
     # Build summary counts by RCC
@@ -371,15 +377,15 @@ send_polio_rcc_emails_conditional <- function(
 
     scope_sentence <- if (is_all_recipient) {
       paste0(
-        "Please find below the weekly automated PREIS POLIO update for Africa, ",
-        "based on the latest information published in the Global Polio Eradication Initiative weekly report dated ",
+        "Please find below the automated PREIS Polio Tracker update for Africa (unofficial prototype), ",
+        "based on the GPEI 'Polio This Week' issue dated ",
         issue_label, "."
       )
     } else {
       paste0(
-        "Please find below the weekly automated PREIS POLIO update for the ",
+        "Please find below the alerts prepared for the ",
         recip_rcc,
-        " Regional Coordination Centre (RCC), based on the latest information published in the Global Polio Eradication Initiative weekly report dated ",
+        " RCC grouping (a geographic classification scheme only), based on the GPEI 'Polio This Week' issue dated ",
         issue_label, "."
       )
     }
@@ -389,11 +395,13 @@ send_polio_rcc_emails_conditional <- function(
       "",
       scope_sentence,
       "",
+      paste0("Prototype non officiel / Unofficial prototype. Source: GPEI, Polio This Week (issue dated ", issue_label, ")."),
+      "",
       "Dashboard access:",
       dashboard_url,
       "",
       paste0("Extraction date: ", extraction_label),
-      paste0("Source: Global Polio Eradication Initiative weekly update"),
+      paste0("Source: Global Polio Eradication Initiative (GPEI), Polio This Week - issue dated ", issue_label),
       source_link,
       "",
       "Summary",
@@ -436,9 +444,10 @@ send_polio_rcc_emails_conditional <- function(
       "Please consult the dashboard and the source document above for the full weekly report and contextual details.",
       "",
       "Best regards,",
-      "PREIS POLIO Automated Intelligence System",
-      "Surveillance and Disease Intelligence Division",
-      "Africa CDC",
+      "PREIS Polio Tracker - unofficial prototype",
+      "This tool is not an official product of Africa CDC, WHO or GPEI. The RCC grouping is used only as a geographic classification scheme.",
+      "Alerts are prepared for RCCs; sending is currently limited to the author (test mode).",
+      "Prototype non officiel : alertes pr\u00e9par\u00e9es pour les RCC ; envoi actuellement limit\u00e9 \u00e0 l'auteur.",
       "",
       "--",
       "Ce message a \u00e9t\u00e9 produit automatiquement par PREIS du Dr Hyacinthe ZABR\u00c9, Prof."

@@ -676,14 +676,11 @@ year_levels <- year_levels[!is.na(year_levels)]
 if (!length(year_levels)) year_levels <- as.integer(format(Sys.Date(), "%Y"))
 latest_year <- max(year_levels)
 
-if (file.exists(LOGO_FP)) {
-  header_title <- tags$span(
-    tags$img(src = "africacdc_logo.png", class = "africacdc-header-logo", alt = "Africa CDC"),
-    tags$span("PREIS-POLIO", class = "preis-header-title")
-  )
-} else {
-  header_title <- "PREIS-POLIO"
-}
+# Neutralite institutionnelle (27 oct. 2026) : logo Africa CDC retire de l'en-tete.
+# Version precedente sauvegardee dans ARCHIVE_UNUSED/backups_20261027_etape2/
+header_title <- tags$span(
+  tags$span("PREIS-POLIO", class = "preis-header-title")
+)
 
 # ------------------------------------------------------------
 # UI
@@ -703,6 +700,11 @@ ui <- dashboardPage(
         ),
         tags$div(
           "Automated monitoring of publicly reported poliovirus signals in Africa",
+          tags$span(
+            "Prototype non officiel. Source : GPEI, Polio This Week.",
+            style = paste0("display:inline-block;margin-left:10px;padding:1px 8px;border-radius:3px;",
+                           "background:#fff3cd;color:#664d03;font-weight:700;")
+          ),
           class = "preis-permanent-subtitle"
         )
       )
@@ -740,7 +742,7 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     tags$head(
-      tags$title("PREIS Polio | Africa CDC"),
+      tags$title("PREIS Polio Tracker | Prototype non officiel"),
 
       tags$style(HTML("
         /* PREIS_KPI_CARDS_AESTHETIC_FINAL */
@@ -1233,8 +1235,8 @@ ui <- dashboardPage(
             width = 5, title = "Operational interpretation", status = "primary", solidHeader = TRUE,
             div(
               class = "note-block",
-              p("This dashboard integrates Africa CDC RCC geographic intelligence with polio surveillance data."),
-              p("RCC polygons are coloured using the Africa CDC regional palette."),
+              p("This dashboard is an unofficial prototype. It displays polio signals published by GPEI (Polio This Week). The RCC grouping is used only as a geographic classification scheme; this is not an official product of Africa CDC, WHO or GPEI."),
+              p("Alerts are prepared for RCCs; sending is currently limited to the author."),
               p("Affected Member States are shown with polio markers."),
               p("The dashboard distinguishes detections in humans and environmental surveillance."),
               p("The same filters drive the map, charts, RCC summaries, country details, and downloadable data.")

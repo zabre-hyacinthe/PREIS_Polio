@@ -42,6 +42,38 @@ is_dry_run_email <- function(send_now = TRUE) {
   FALSE
 }
 
+# ---------------------------------------------------------
+# Garde-fou destinataires (liste blanche, "fail-closed")
+# Ajoute le 27 oct. 2026. Un envoi REEL n'est possible que vers une adresse
+# confirmee par l'auteur dans alert_recipients.csv (colonne owner_confirmed
+# renseignee). Fichier ou colonne absents, ou adresse non confirmee :
+# AUCUN envoi (statut "blocked_not_authorized"). Les adresses ne sont jamais
+# ecrites dans les messages de ce garde-fou.
+# ---------------------------------------------------------
+recipients_allowlist_path <- function() {
+  p <- Sys.getenv("PREIS_RECIPIENTS_FILE", "")
+  if (nzchar(p)) return(p)
+  file.path(getwd(), "dashboard", "data", "dashboard", "alert_recipients.csv")
+}
+
+is_recipient_authorized <- function(to, path = recipients_allowlist_path()) {
+  to_norm <- tolower(trimws(as.character(to)))
+  if (length(to_norm) != 1L || is.na(to_norm) || !nzchar(to_norm)) return(FALSE)
+  if (!file.exists(path)) return(FALSE)
+  al <- tryCatch(
+    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE,
+                    colClasses = "character", fileEncoding = "UTF-8-BOM"),
+    error = function(e) NULL
+  )
+  if (is.null(al)) return(FALSE)
+  names(al) <- tolower(trimws(names(al)))
+  if (!all(c("email", "owner_confirmed") %in% names(al))) return(FALSE)
+  em <- tolower(trimws(al$email))
+  oc <- tolower(trimws(al$owner_confirmed))
+  ok <- !is.na(oc) & nzchar(oc) & !(oc %in% c("false", "0", "no", "non", "n"))
+  any(!is.na(em) & em == to_norm & ok)
+}
+
 send_email_safely <- function(
     to,
     subject,
@@ -66,6 +98,26 @@ send_email_safely <- function(
     stop("send_email_safely(): body/html content is empty.")
   }
   
+  # Garde-fou liste blanche (to + cc + bcc)
+  all_rcpt <- c(to, cc, bcc)
+  all_rcpt <- all_rcpt[!is.na(all_rcpt) & nzchar(trimws(all_rcpt))]
+  rcpt_ok <- all(vapply(all_rcpt, is_recipient_authorized, logical(1)))
+  if (!rcpt_ok) {
+    if (is_dry_run_email(send_now = send_now)) {
+      message("[EMAIL] NOTE (dry_run): at least one recipient is not confirmed ",
+              "in the allowlist; a real send would be BLOCKED.")
+    } else {
+      message("[EMAIL] BLOCKED: recipient not confirmed in the allowlist -> no email sent.")
+      return(list(
+        success = FALSE,
+        status = "blocked_not_authorized",
+        to = to,
+        subject = subject,
+        error = "blocked_not_authorized: recipient not confirmed by owner in alert_recipients.csv"
+      ))
+    }
+  }
+
   if (is_dry_run_email(send_now = send_now)) {
     message("[EMAIL] dry_run -> no email sent to: ", to)
     return(list(
