@@ -4,7 +4,7 @@
   "source": "GPEI / Polio This Week",
   "last_report_id": "issue_20261021",
   "last_report_date": "2026-10-21",
-  "last_extracted_at": "2026-10-27T05:06:51Z",
+  "last_extracted_at": "2026-10-28T05:07:47Z",
   "system_status": "alert",
   "n_series_rows": 6,
   "n_countries": 6,
@@ -18,14 +18,23 @@
   "virus_summary": {
     "cVDPV1": {
       "n_events": 3,
+      "n_cases": 2,
+      "n_env_samples": 1,
+      "n_rows_to_verify": 0,
       "n_countries": 2
     },
     "cVDPV2": {
-      "n_events": 8,
+      "n_events": 9,
+      "n_cases": 8,
+      "n_env_samples": 1,
+      "n_rows_to_verify": 0,
       "n_countries": 3
     },
     "cVDPV3": {
-      "n_events": 1,
+      "n_events": 3,
+      "n_cases": 1,
+      "n_env_samples": 2,
+      "n_rows_to_verify": 0,
       "n_countries": 1
     }
   },
@@ -49,6 +58,9 @@
     "provisional": "FALSE — source officielle GPEI",
     "update_freq": "Hebdomadaire (mardi/mercredi)"
   },
+  "count_method": "atomic_parser",
+  "n_rows_count_to_verify": 0,
+  "count_note": "n_events = cas humains + echantillons environnementaux (detections), pas un nombre de cas. Comptage NA = a verifier, jamais 0 ni 1.",
   "schema_version": "1.0",
-  "adapter_version": "00_preis_adapter_polio.R v1.0"
+  "adapter_version": "00_preis_adapter_polio.R v1.1"
 }
