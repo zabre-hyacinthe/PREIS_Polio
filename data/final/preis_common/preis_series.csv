@@ -1,7 +1,5 @@
 module,source,report_id,report_date,geo_level,geo_name,geo_code,indicator,value,value_type,signal_level,provisional,source_url,extracted_at
-polio,GPEI / Polio This Week,issue_20261021,2026-10-21,country,Chad,TCD,cvdpv2_cases_and_env,2,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-30T05:06:47Z
-polio,GPEI / Polio This Week,issue_20261021,2026-10-21,country,Democratic Republic of the Congo,COD,cvdpv2_cases,6,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-30T05:06:47Z
-polio,GPEI / Polio This Week,issue_20261021,2026-10-21,country,Madagascar,MDG,cvdpv1_env_samples,1,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-30T05:06:47Z
-polio,GPEI / Polio This Week,issue_20261021,2026-10-21,country,Nigeria,NGA,cvdpv3_cases_and_env,3,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-30T05:06:47Z
-polio,GPEI / Polio This Week,issue_20261021,2026-10-21,country,South Sudan,SSD,cvdpv1_cases,2,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-30T05:06:47Z
-polio,GPEI / Polio This Week,issue_20261021,2026-10-21,country,Togo,TGO,cvdpv2_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-30T05:06:47Z
+polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Democratic Republic of the Congo,COD,cvdpv2_cases,7,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-31T05:05:18Z
+polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Niger,NER,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-31T05:05:18Z
+polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Nigeria,NGA,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-31T05:05:18Z
+polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Somalia,SOM,cvdpv2_env_samples,1,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-10-31T05:05:18Z
