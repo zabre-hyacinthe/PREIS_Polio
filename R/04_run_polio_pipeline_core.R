@@ -1,6 +1,8 @@
 # ============================================================
 # R/04_run_polio_pipeline_core.R — PREIS POLIO Core Pipeline
 # Version robuste sans casser les anciens scripts
+# v2 (2026-11-03) : le registre last_issue.txt n'avance plus en mode test ni
+# si aucun envoi n'a reussi (voir etape 7).
 # ============================================================
 
 run_polio_pipeline_core <- function(
@@ -263,16 +265,63 @@ run_polio_pipeline_core <- function(
   #    envoi des emails) : une edition n'est marquee traitee que si tout
   #    le pipeline a reellement reussi, jamais avant.
   # ------------------------------------------------------------
-  tryCatch({
-    write_last_issue(latest_issue$issue_id, root = ROOT)
-    message("[POLIO CORE] Registre last_issue.txt mis a jour -> ", latest_issue$issue_id)
-  }, error = function(e) {
-    warning(
-      "[POLIO CORE] Echec de la mise a jour de last_issue.txt (le pipeline ",
-      "a neanmoins reussi et les emails ont ete envoyes) : ", e$message,
-      call. = FALSE
-    )
-  })
+  # CORRECTIF 03/11/2026 (v2) : le registre n'est avance que si l'edition a
+  # VRAIMENT ete traitee. Avant, write_last_issue() etait appele meme en mode
+  # test (PREIS_DRY_RUN=true, defaut du workflow_dispatch) et meme si tous les
+  # envois avaient echoue ou ete bloques : l'edition etait alors marquee
+  # "deja traitee" et le cron suivant n'envoyait plus jamais l'alerte reelle.
+  # Regles :
+  #   - mode test (dry-run) -> registre NON avance ;
+  #   - aucun envoi effectue et au moins un echec -> registre NON avance
+  #     (nouvelle tentative au prochain passage) ;
+  #   - au moins un envoi reussi -> registre avance (echecs partiels signales) ;
+  #   - aucun destinataire concerne (tout "skipped_no_alert") -> registre avance.
+  is_dry <- if (exists("is_dry_run_email", mode = "function")) {
+    isTRUE(is_dry_run_email(send_now = send_now))
+  } else {
+    !isTRUE(send_now) ||
+      tolower(Sys.getenv("PREIS_DRY_RUN", "false")) %in% c("1", "true", "yes", "y")
+  }
+  so <- result$send_output
+  st <- if (is.data.frame(so) && "status" %in% names(so)) as.character(so$status) else character(0)
+  n_sent   <- sum(st == "sent")
+  n_failed <- sum(grepl("^(failed|blocked)", st))
+
+  mark_processed <- FALSE
+  if (is.null(so)) {
+    mark_processed <- TRUE   # edition inchangee ou rien a envoyer : rien a rejouer
+  } else if (is_dry) {
+    message("[POLIO CORE] Mode test (dry-run) : registre last_issue.txt NON avance, ",
+            "l'edition reste 'nouvelle' pour le prochain envoi reel.")
+  } else if (n_sent > 0) {
+    mark_processed <- TRUE
+    if (n_failed > 0) {
+      warning("[POLIO CORE] ", n_failed, " envoi(s) en echec/bloques sur ", length(st),
+              " ; registre avance car ", n_sent, " envoi(s) ont reussi.", call. = FALSE)
+    }
+  } else if (n_failed > 0) {
+    message("[POLIO CORE] Aucun envoi reussi et ", n_failed, " echec(s)/blocage(s) : ",
+            "registre last_issue.txt NON avance (nouvelle tentative au prochain passage).")
+    # Visible dans l'interface GitHub Actions sans bloquer le commit des donnees
+    # du tableau de bord (le job reste vert, une annotation d'avertissement apparait).
+    cat("::warning title=PREIS Polio alerts NOT sent::", n_failed,
+        " envoi(s) en echec/bloques, aucun reussi ; edition ", latest_issue$issue_id,
+        " non marquee traitee (nouvelle tentative au prochain passage).\n", sep = "")
+  } else {
+    mark_processed <- TRUE   # tout etait "skipped_no_alert"
+  }
+
+  if (mark_processed) {
+    tryCatch({
+      write_last_issue(latest_issue$issue_id, root = ROOT)
+      message("[POLIO CORE] Registre last_issue.txt mis a jour -> ", latest_issue$issue_id)
+    }, error = function(e) {
+      warning(
+        "[POLIO CORE] Echec de la mise a jour de last_issue.txt : ", e$message,
+        call. = FALSE
+      )
+    })
+  }
 
   result$status <- if (isTRUE(result$sent)) "SUCCESS" else "SUCCESS_NO_UPDATE"
 
