@@ -121,6 +121,19 @@ run_polio_pipeline_core <- function(
   #    Comme ça les scripts anciens qui lisent polio_last_issue.csv
   #    utilisent la nouvelle issue, pas l'ancienne.
   # ------------------------------------------------------------
+  # GARDE-FOU 06/11/2026 : edition de la page plus ancienne que la derniere traitee
+  # -> aucune ecriture (registre, dashboard), aucun envoi (sauf force_send).
+  if (isTRUE(check_result$is_stale) && !isTRUE(force_send)) {
+    stale_msg <- paste0(
+      "la page GPEI indique ", latest_issue$issue_date,
+      ", plus ancien que la derniere edition traitee (", check_result$last_issue,
+      ") : aucune ecriture, aucun envoi."
+    )
+    message("[POLIO CORE] STOP -- ", stale_msg)
+    cat("::warning title=PREIS Polio source older than last processed edition::", stale_msg, "\n", sep = "")
+    result$status <- "SKIPPED_STALE_SOURCE"
+    return(result)
+  }
   last_issue_file <- file.path(
     ROOT, "dashboard", "data", "dashboard", "polio_last_issue.csv"
   )

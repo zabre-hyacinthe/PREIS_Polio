@@ -13,6 +13,25 @@ suppressPackageStartupMessages({
   library(tibble)
 })
 
+# CORRECTIF 06/11/2026 : analyse stricte "jj Mois aaaa", independante de la langue du systeme.
+# Cause du bug "20 April 2026" : lubridate (ordres ymd/mdy sans separateurs) lisait
+# "04 October 2026" comme mois=04, jour=20 (debut de 2026), annee=26.
+.strict_issue_label <- function(x) {
+  x <- stringr::str_squish(as.character(x)[1])
+  if (is.na(x)) return(NA_character_)
+  m <- stringr::str_match(x, "^([0-9]{1,2})\\s+([A-Za-z]+)\\s+([0-9]{4})$")
+  if (is.na(m[1, 1])) return(NA_character_)
+  mn <- c("January", "February", "March", "April", "May", "June", "July", "August",
+          "September", "October", "November", "December")
+  k <- match(tolower(m[1, 3]), tolower(mn))
+  if (is.na(k)) return(NA_character_)
+  d <- tryCatch(
+    as.Date(sprintf("%04d-%02d-%02d", as.integer(m[1, 4]), k, as.integer(m[1, 2]))),
+    error = function(e) as.Date(NA)
+  )
+  if (is.na(d) || d > Sys.Date()) return(NA_character_)
+  sprintf("%02d %s %d", as.integer(m[1, 2]), mn[k], as.integer(m[1, 4]))
+}
 send_polio_rcc_emails_conditional <- function(
     send_now = FALSE,
     force_send = FALSE,
@@ -168,6 +187,8 @@ send_polio_rcc_emails_conditional <- function(
     x_clean <- stringr::str_replace_all(x_clean, "(?i)^gpei\\s*report\\s*dated\\s*", "")
     x_clean <- stringr::str_squish(x_clean)
 
+    .s <- .strict_issue_label(x_clean)
+    if (!is.na(.s)) return(.s)
     # Try lubridate if available.
     if (requireNamespace("lubridate", quietly = TRUE)) {
       parsed <- suppressWarnings(lubridate::parse_date_time(
@@ -223,6 +244,21 @@ send_polio_rcc_emails_conditional <- function(
     x_clean
   }
 
+  # CORRECTIF 06/11/2026 : la date du bulletin vient du registre ecrit par le pipeline
+  # (entete "as of" de la page GPEI), pas d'une colonne du CSV d'alertes.
+  .lastfile <- file.path(project_dir, "dashboard/data/dashboard/polio_last_issue.csv")
+  if (file.exists(.lastfile)) {
+    .li <- tryCatch(readr::read_csv(.lastfile, show_col_types = FALSE), error = function(e) NULL)
+    if (!is.null(.li) && "issue_date" %in% names(.li) && nrow(.li) > 0 &&
+        !is.na(.li$issue_date[1]) && nzchar(trimws(as.character(.li$issue_date[1])))) {
+      if (!identical(trimws(as.character(.li$issue_date[1])), trimws(as.character(issue_label)))) {
+        message("[POLIO EMAIL] date du CSV d'alertes (", issue_label, ") remplacee par la date du bulletin du registre : ", .li$issue_date[1])
+      }
+      issue_label <- trimws(as.character(.li$issue_date[1]))
+    }
+  }
+  # Noms de pays : majuscules lisibles (ex. "Democratic Republic of the Congo")
+  .fmt_country <- function(x) tools::toTitleCase(tolower(as.character(x)))
   issue_label <- format_issue_label(issue_label)
 
   extraction_label <- format(Sys.time(), "%d %B %Y %H:%M:%S %Z")
@@ -373,7 +409,7 @@ send_polio_rcc_emails_conditional <- function(
         }
 
         paste0(
-          "- ", country, " (", rcc_lab, " RCC): ", summary_txt,
+          "- ", .fmt_country(country), " (", rcc_lab, " RCC): ", summary_txt,
           if (length(suffix) > 0) paste0(" [", paste(suffix, collapse = " | "), "]") else ""
         )
       })
@@ -413,7 +449,7 @@ send_polio_rcc_emails_conditional <- function(
       "",
       scope_sentence,
       "",
-      paste0("Prototype non officiel / Unofficial prototype. Source: GPEI, Polio This Week (issue dated ", issue_label, ")."),
+      "*** Unofficial prototype / Prototype non officiel ***",
       "",
       "Dashboard access:",
       dashboard_url,
@@ -472,6 +508,7 @@ send_polio_rcc_emails_conditional <- function(
     )
 
     body <- paste(body_lines, collapse = "\n")
+    if (identical(Sys.getenv("PREIS_PRINT_BODY"), "1") && i == 1) cat("\n----- BODY PREVIEW -----\n", body, "\n----- END PREVIEW -----\n", sep = "")
 
     status <- "dry_run"
 
