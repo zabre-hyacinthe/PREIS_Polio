@@ -131,7 +131,8 @@ run_polio_pipeline_core <- function(
     )
     message("[POLIO CORE] STOP -- ", stale_msg)
     cat("::warning title=PREIS Polio source older than last processed edition::", stale_msg, "\n", sep = "")
-    result$status <- "SKIPPED_STALE_SOURCE"
+    result$status <- "SUCCESS_NO_UPDATE"
+    result$stale <- TRUE
     return(result)
   }
   last_issue_file <- file.path(
