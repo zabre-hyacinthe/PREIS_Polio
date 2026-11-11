@@ -1,5 +1,5 @@
 module,source,report_id,report_date,geo_level,geo_name,geo_code,indicator,value,value_type,signal_level,provisional,source_url,extracted_at
-polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Democratic Republic of the Congo,COD,cvdpv2_cases,7,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-10T05:05:04Z
-polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Niger,NER,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-10T05:05:04Z
-polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Nigeria,NGA,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-10T05:05:04Z
-polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Somalia,SOM,cvdpv2_env_samples,1,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-10T05:05:04Z
+polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Democratic Republic of the Congo,COD,cvdpv2_cases,7,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-11T05:05:18Z
+polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Niger,NER,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-11T05:05:18Z
+polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Nigeria,NGA,cvdpv3_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-11T05:05:18Z
+polio,GPEI / Polio This Week,issue_20261028,2026-10-28,country,Somalia,SOM,cvdpv2_env_samples,1,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-11T05:05:18Z
