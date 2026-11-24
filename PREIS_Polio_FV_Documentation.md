@@ -128,14 +128,14 @@ Si identique → arrêt immédiat. Si différente → pipeline complet.
 
 | Email | RCC | Portée |
 |---|---|---|
-| zrhyacinthe@gmail.com | All | Toute l'Afrique |
-| zrhyacinthe2@gmail.com | All | Toute l'Afrique |
-| zraogohyacinthe@yahoo.fr | Northern | Afrique du Nord |
-| raogoz@africacdc.org | Western | Afrique de l'Ouest |
-| carefordbf@gmail.com | Central | Afrique Centrale |
-| reassadbf@gmail.com | Eastern | Afrique de l'Est |
-| zrhyacinthe2@gmail.com | Southern | Afrique Australe |
-| zrhyacinthe2@gmail.com | All | Toute l'Afrique |
+| adresse@masquee.invalid | All | Toute l'Afrique |
+| adresse@masquee.invalid | All | Toute l'Afrique |
+| adresse@masquee.invalid | Northern | Afrique du Nord |
+| adresse@masquee.invalid | Western | Afrique de l'Ouest |
+| adresse@masquee.invalid | Central | Afrique Centrale |
+| adresse@masquee.invalid | Eastern | Afrique de l'Est |
+| adresse@masquee.invalid | Southern | Afrique Australe |
+| adresse@masquee.invalid | All | Toute l'Afrique |
 
 **Logique d'envoi** : chaque destinataire reçoit uniquement les alertes
 correspondant à son RCC. Si aucune alerte pour un RCC donné → email ignoré
@@ -165,11 +165,11 @@ Ils ne sont jamais stockés dans les scripts.
 
 ```r
 # À définir avant chaque session (ou dans .Renviron)
-Sys.setenv(SMTP_USER  = "email@domaine.com")
+Sys.setenv(SMTP_USER  = "adresse@masquee.invalid")
 Sys.setenv(SMTP_PASS  = "mot_de_passe")
 Sys.setenv(SMTP_HOST  = "smtp.gmail.com")   # défaut
 Sys.setenv(SMTP_PORT  = "465")              # défaut
-Sys.setenv(ALERT_FROM = "email@domaine.com")
+Sys.setenv(ALERT_FROM = "adresse@masquee.invalid")
 ```
 
 ### Fichier .Renviron (recommandé pour automatisation)
@@ -178,11 +178,11 @@ Pour que la tâche planifiée Windows fonctionne sans intervention,
 ajouter ces variables dans `C:/Users/[utilisateur]/.Renviron` :
 
 ```
-SMTP_USER=email@domaine.com
+SMTP_USER=adresse@masquee.invalid
 SMTP_PASS=mot_de_passe
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
-ALERT_FROM=email@domaine.com
+ALERT_FROM=adresse@masquee.invalid
 ```
 
 Puis redémarrer RStudio.
@@ -217,7 +217,7 @@ readLines("D:/PREIS_Polio_FV/outputs/logs/polio_pipeline.log")
 Éditer `dashboard/data/dashboard/alert_recipients.csv` :
 ```
 email,rcc,name,mode
-nouveau@email.com,Eastern,Nom Prénom,SUMMARY
+adresse@masquee.invalid,Eastern,Nom Prénom,SUMMARY
 ```
 Valeurs RCC : `All`, `Northern`, `Western`, `Central`, `Eastern`, `Southern`
 Valeurs mode : `SUMMARY` (10 alertes max) ou `FULL` (20 alertes max)

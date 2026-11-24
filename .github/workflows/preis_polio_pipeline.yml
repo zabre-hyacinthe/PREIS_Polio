@@ -84,6 +84,19 @@ jobs:
             }
           '
 
+      - name: Restore recipients from secret (never committed)
+        env:
+          RECIP: ${{ secrets.PREIS_RECIPIENTS_CSV }}
+        run: |
+          if [ -z "$RECIP" ]; then
+            echo "::error::Secret PREIS_RECIPIENTS_CSV absent ou vide : arret volontaire (aucun envoi perdu en silence)."
+            exit 1
+          fi
+          # masquer chaque adresse dans les logs publics AVANT toute autre sortie
+          echo "$RECIP" | grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+' | sort -u | while read -r m; do echo "::add-mask::$m"; done
+          printf '%s\n' "$RECIP" > dashboard/data/dashboard/alert_recipients.csv
+          echo "Destinataires charges depuis le secret."
+
       - name: Run Polio cloud pipeline
         run: |
           Rscript R/120_run_polio_cloud.R
@@ -93,7 +106,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dashboard/data/dashboard/ data/final/preis_common/ data/processed/ \
-            data/last_issue.txt outputs/email/polio_email_sent_log.csv || true
+            data/last_issue.txt || true
           if git diff --cached --quiet; then
             echo "No data change to commit."
           else

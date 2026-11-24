@@ -9,3 +9,14 @@ rsconnect/
 *_secret*
 .secrets/
 email_credentials*
+
+# PREIS demo - personal data (participants e-mail addresses): never commit
+demo/out/
+demo/signups/
+
+# --- Donnees personnelles : ne JAMAIS commiter (adresses e-mail) ---
+dashboard/data/dashboard/alert_recipients.csv
+dashboard/data/dashboard/polio_email_send_log.csv
+outputs/email/
+data/offres/
+private/
