@@ -1361,18 +1361,46 @@ server <- function(input, output, session) {
     x
   })
 
+  # ---- Keep the "Latest" view on the newest edition after an auto-refresh ----
+  # Bug fixed 26 Nov 2026: date_max was computed once at start-up, so when a new GPEI
+  # edition arrived during an open session the date filter stayed on the old date and
+  # every card showed 0 ("No dated issue"). Now the filter follows the newest edition.
+  latest_seen <- reactiveVal(date_max)
+  observeEvent(polio_df_reactive(), {
+    d <- polio_df_reactive()$issue_date
+    d <- d[!is.na(d)]
+    if (!length(d)) return()
+    new_max <- max(d)
+    old_max <- latest_seen()
+    if (identical(new_max, old_max)) return()
+    dr <- input$date_range
+    latest_seen(new_max)
+    if (!is.null(dr) && length(dr) == 2 && !anyNA(dr)) {
+      if (dr[1] == old_max && dr[2] == old_max) {
+        # user was on "Latest": move to the new latest edition
+        updateDateRangeInput(session, "date_range", start = new_max, end = new_max)
+        ny <- as.integer(format(new_max, "%Y"))
+        updateSliderInput(session, "year_range", value = c(ny, ny))
+      } else if (dr[2] == old_max) {
+        # user was on "Full history": extend the end date
+        updateDateRangeInput(session, "date_range", end = new_max)
+      }
+    }
+  }, ignoreInit = TRUE)
+
   observeEvent(input$reset_filters, {
     updateSelectInput(session, "rcc", selected = "All")
     updateSelectInput(session, "country", selected = "All")
     updateSelectInput(session, "virus_type", selected = "All")
     updateSelectInput(session, "detection_source", selected = "All")
-    updateSliderInput(session, "year_range", value = c(latest_year, latest_year))
-    updateDateRangeInput(session, "date_range", start = date_max, end = date_max)
+    ly <- as.integer(format(latest_seen(), "%Y"))
+    updateSliderInput(session, "year_range", value = c(ly, ly))
+    updateDateRangeInput(session, "date_range", start = latest_seen(), end = latest_seen())
   })
 
   observeEvent(input$show_history, {
     updateSliderInput(session, "year_range", value = c(min(year_levels), max(year_levels)))
-    updateDateRangeInput(session, "date_range", start = date_min, end = date_max)
+    updateDateRangeInput(session, "date_range", start = date_min, end = latest_seen())
   })
   
   observe({
