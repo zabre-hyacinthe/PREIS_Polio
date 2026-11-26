@@ -113,3 +113,32 @@ jobs:
             git commit -m "Update PREIS Polio data [skip ci]"
             git push
           fi
+
+      - name: Warn the owner by e-mail if the pipeline did not complete
+        if: ${{ failure() }}
+        env:
+          OWNER_EMAIL: ${{ secrets.PREIS_OWNER_EMAIL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import os, smtplib, ssl
+          from email.message import EmailMessage
+          to = os.environ.get("OWNER_EMAIL") or os.environ.get("ALERT_FROM")
+          user, pw = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASS")
+          if not (to and user and pw):
+              print("::warning::No owner e-mail or SMTP secret: warning e-mail NOT sent (set secret PREIS_OWNER_EMAIL).")
+              raise SystemExit(0)
+          m = EmailMessage()
+          m["Subject"] = "[PREIS Polio] WARNING: the daily pipeline did NOT complete"
+          m["From"] = os.environ.get("ALERT_FROM") or user
+          m["To"] = to
+          m.set_content(
+              "The PREIS Polio daily pipeline failed or stopped before finishing.\n"
+              "No alert may have been sent and the dashboard data may be out of date.\n\n"
+              "Run details (which step failed): " + os.environ["RUN_URL"] + "\n\n"
+              "Check the GPEI page 'Polio this week' manually and re-run the workflow if needed.\n"
+              "(Automatic message. Silence is not a sign that everything ran.)")
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context()) as s:
+              s.login(user, pw); s.send_message(m)
+          print("Warning e-mail sent.")
+          PY
