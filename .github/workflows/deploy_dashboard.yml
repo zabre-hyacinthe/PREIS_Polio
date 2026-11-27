@@ -1,0 +1,103 @@
+name: PREIS Polio Dashboard Deploy
+
+# Redeploys the public dashboard whenever its code changes (app.R, www, config).
+# DATA refreshes do not need a redeploy: the app reads the CSV files from GitHub at run time.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/app.R"
+      - "dashboard/www/**"
+      - "dashboard/config/**"
+      - "dashboard/data/curated/**"
+      - ".github/workflows/deploy_dashboard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preis-polio-dashboard-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASS: ${{ secrets.SMTP_PASS }}
+      ALERT_FROM: ${{ secrets.ALERT_FROM }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev \
+            libgdal-dev libudunits2-dev libproj-dev libgeos-dev libfontconfig1-dev \
+            libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::shiny
+            any::shinydashboard
+            any::dplyr
+            any::readr
+            any::stringr
+            any::DT
+            any::ggplot2
+            any::plotly
+            any::leaflet
+            any::sf
+            any::htmltools
+            any::scales
+            any::tibble
+            any::rsconnect
+          cache: always
+
+      - name: Deploy to shinyapps.io
+        env:
+          SHINYAPPS_NAME: ${{ secrets.SHINYAPPS_NAME }}
+          SHINYAPPS_TOKEN: ${{ secrets.SHINYAPPS_TOKEN }}
+          SHINYAPPS_SECRET: ${{ secrets.SHINYAPPS_SECRET }}
+        run: |
+          if [ -z "$SHINYAPPS_NAME" ] || [ -z "$SHINYAPPS_TOKEN" ] || [ -z "$SHINYAPPS_SECRET" ]; then
+            echo "::error::Secrets SHINYAPPS_NAME / SHINYAPPS_TOKEN / SHINYAPPS_SECRET are missing: nothing deployed."
+            exit 1
+          fi
+          Rscript -e '
+            rsconnect::setAccountInfo(name = Sys.getenv("SHINYAPPS_NAME"),
+                                      token = Sys.getenv("SHINYAPPS_TOKEN"),
+                                      secret = Sys.getenv("SHINYAPPS_SECRET"));
+            rsconnect::deployApp(appDir = "dashboard", appName = "dashboard", forceUpdate = TRUE, launch.browser = FALSE)
+          '
+
+      - name: Warn the owner by e-mail if the deployment failed
+        if: ${{ failure() }}
+        env:
+          OWNER_EMAIL: ${{ secrets.PREIS_OWNER_EMAIL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import os, smtplib, ssl
+          from email.message import EmailMessage
+          to = os.environ.get("OWNER_EMAIL") or os.environ.get("ALERT_FROM")
+          user, pw = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASS")
+          if not (to and user and pw):
+              print("::warning::No owner e-mail or SMTP secret: warning e-mail NOT sent."); raise SystemExit(0)
+          m = EmailMessage()
+          m["Subject"] = "[PREIS Polio] WARNING: the dashboard deployment FAILED"
+          m["From"] = os.environ.get("ALERT_FROM") or user
+          m["To"] = to
+          m.set_content("The automatic deployment of the PREIS Polio dashboard failed.\n"
+                        "The public dashboard still runs the previous version.\n\nDetails: " + os.environ["RUN_URL"] + "\n")
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context()) as s:
+              s.login(user, pw); s.send_message(m)
+          print("Warning e-mail sent.")
+          PY
