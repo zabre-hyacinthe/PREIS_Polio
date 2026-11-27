@@ -1,6 +1,6 @@
 module,source,report_id,report_date,geo_level,geo_name,geo_code,indicator,value,value_type,signal_level,provisional,source_url,extracted_at
-polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,Kenya,KEN,cvdpv2_env_samples,1,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T08:59:40Z
-polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,Somalia,SOM,cvdpv2_env_samples,3,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T08:59:40Z
-polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,South Sudan,SSD,cvdpv1_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T08:59:40Z
-polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,South Sudan,SSD,cvdpv2_cases,3,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T08:59:40Z
-polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,Uganda,UGA,cvdpv2_env_samples,2,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T08:59:40Z
+polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,Kenya,KEN,cvdpv2_env_samples,1,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T14:33:40Z
+polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,Somalia,SOM,cvdpv2_env_samples,3,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T14:33:40Z
+polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,South Sudan,SSD,cvdpv1_cases,1,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T14:33:40Z
+polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,South Sudan,SSD,cvdpv2_cases,3,incident,high,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T14:33:40Z
+polio,GPEI / Polio This Week,issue_20261125,2026-11-25,country,Uganda,UGA,cvdpv2_env_samples,2,incident,moderate,FALSE,https://polioeradication.org/about-polio/polio-this-week/,2026-11-27T14:33:40Z
