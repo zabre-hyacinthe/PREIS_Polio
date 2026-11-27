@@ -222,7 +222,7 @@ build_polio_email_body <- function(
     "Surveillance and Disease Intelligence Division\n",
     "Africa CDC\n\n",
     "--\n",
-    "Ce message a \u00e9t\u00e9 produit automatiquement par PREIS du Dr Hyacinthe ZABR\u00c9, Prof."
+    "Ce message a \u00e9t\u00e9 produit automatiquement par PREIS du Dr Hyacinthe ZABR\u00c9."
   )
   
   paste0(intro, extraction_txt, summary_block, detail, outro)

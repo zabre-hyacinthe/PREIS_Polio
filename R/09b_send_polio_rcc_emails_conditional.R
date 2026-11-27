@@ -386,6 +386,24 @@ send_polio_rcc_emails_conditional <- function(
           ""
         }
 
+        # Fix 27 Nov 2026: when one GPEI bullet reports several virus types (e.g. South Sudan:
+        # "one cVDPV1 case and three cVDPV2 cases"), the raw sentence was repeated on each row.
+        # Describe each row with its OWN virus type and count instead.
+        n_virus_in_text <- length(unique(unlist(regmatches(
+          summary_txt, gregexpr("(cVDPV|VDPV|WPV)[0-9]", summary_txt)))))
+        if (n_virus_in_text >= 2 && nzchar(virus_type) && nzchar(signal_type) &&
+            "count" %in% names(sub_alerts) && !is.na(suppressWarnings(as.numeric(r[["count"]])))) {
+          n_row <- as.integer(as.numeric(r[["count"]]))
+          words <- c("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")
+          n_lab <- if (n_row >= 1 && n_row <= 10) words[n_row] else as.character(n_row)
+          if (tolower(signal_type) == "case") {
+            summary_txt <- paste0(n_lab, " ", virus_type, if (n_row == 1) " case" else " cases")
+          } else if (grepl("environ", tolower(signal_type))) {
+            summary_txt <- paste0(n_lab, " ", virus_type, "-positive environmental ",
+                                  if (n_row == 1) "sample" else "samples")
+          }
+        }
+
         suffix <- c()
         if (nzchar(virus_type)) suffix <- c(suffix, virus_type)
         if (nzchar(signal_type)) suffix <- c(suffix, signal_type)
@@ -504,7 +522,7 @@ send_polio_rcc_emails_conditional <- function(
       "Prototype non officiel : alertes pr\u00e9par\u00e9es pour les RCC ; envoi actuellement limit\u00e9 \u00e0 l'auteur.",
       "",
       "--",
-      "Ce message a \u00e9t\u00e9 produit automatiquement par PREIS du Dr Hyacinthe ZABR\u00c9, Prof."
+      "Ce message a \u00e9t\u00e9 produit automatiquement par PREIS du Dr Hyacinthe ZABR\u00c9."
     )
 
     body <- paste(body_lines, collapse = "\n")
