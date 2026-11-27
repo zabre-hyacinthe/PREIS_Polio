@@ -1,16 +1,9 @@
 name: PREIS Polio Dashboard Deploy
 
-# Redeploys the public dashboard whenever its code changes (app.R, www, config).
-# DATA refreshes do not need a redeploy: the app reads the CSV files from GitHub at run time.
+# Manual only: run it from the Actions tab ("Run workflow") when you want GitHub to deploy the dashboard.
+# It needs the secrets SHINYAPPS_NAME / SHINYAPPS_TOKEN / SHINYAPPS_SECRET. Without them, deploy from your
+# computer with DEPLOY_DASHBOARD.cmd instead. DATA refreshes never need a redeploy (the app reads GitHub).
 on:
-  push:
-    branches: [main]
-    paths:
-      - "dashboard/app.R"
-      - "dashboard/www/**"
-      - "dashboard/config/**"
-      - "dashboard/data/curated/**"
-      - ".github/workflows/deploy_dashboard.yml"
   workflow_dispatch:
 
 permissions:
